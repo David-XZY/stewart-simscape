@@ -1,0 +1,34 @@
+Compressed HS pre-alignment trajectory optimization summary
+MAT: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\hs_compressed_result_20260523_153347.mat
+decision variables: 474
+HS equalities: 240
+path inequalities: 2706
+initial objective: 1.734082083032e+00
+initial objective eval time: 0.111403 s
+initial nonlcon eval time: 0.050503 s
+initial max path violation: 2.164612386229e-02
+initial min clearance: -1.164612386229e-02
+exitflag: 0
+iterations: 1
+funcCount: 950
+solve time: 84.003632 s
+message: 求解器过早停止。
+
+fmincon 已停止，因为它超过迭代限制，
+options.MaxIterations = 1.000000e+00。
+fval: 1.737311305081e+00
+final successFlag: 0
+final max path violation: 0.000000000000e+00
+final dense max path violation: 0.000000000000e+00
+final HS equality max: 1.016255339838e-02
+final min clearance: 1.023682940404e-02
+final max abs force: 1.027523454949e+03
+plots:
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\pose_velocity_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_length_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_speed_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_acceleration_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\actuator_force_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\singularity_collision_20260523_153347.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\path_3d_20260523_153347.png
+animation: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\stewart_prealign_5s_20260523_153347.mp4
