@@ -1,0 +1,89 @@
+
+===== 圆柱体-长方体两阶段 CasADi/IPOPT/MA27 隐式 HS 默认入口 =====
+入口：run_01_hs_dynamic_opt.m
+qWaypoint = [-0.57862443 -0.29219104  1.57370980  0.08726646  0.26179939  0.17453293]^T
+qGoal     = [ 0.03968888 -0.18316572  1.40547742  0.08726646  0.26179939  0.17453293]^T
+T1=5.000 s, T2=2.500 s, N1=40, N2=20, h=0.125000 s
+CasADi root: D:\NPU\Matlab_code\stewart-simscape\lib\casadi-windows-matlabR2016a-v3.5.5
+CoinHSL bin: D:\NPU\Matlab_code\stewart-simscape\lib\CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5\bin
+CasADi version: 3.5.5
+MA27 precheck: opts.ipopt.linear_solver = ma27
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+MA27 precheck success: x=1, return_status=Solve_Succeeded, time=0.099 s
+目标规模：numIntervals=60, numel(z)=2160, numel(gEq)=1657, numel(cIneq)=4518
+
+===== 构建 CasADi MX 两阶段隐式 NLP =====
+NLP 构建完成：numel(z)=2160, numel(gEq)=1657, numel(cIneq)=4518, buildTime=45.501 s
+
+===== 初值诊断 =====
+J0=1.91755502e+00, evalTime=0.009 s, maxEq=3.449e-03, maxIneqViolation=-0.000e+00
+maxEq=3.449e-03, maxIneqViolation=-0.000e+00
+minClearance=0.010000 m, finalGap=0.010000 m, safeDistance=0.005000 m
+stage2 max |y_B|=1.249e-16, max |z_B-zGoal|=3.886e-16, max |rpy-rpyBox|=2.776e-17, min xdot_B=0.000e+00
+leg length=[1.078416, 1.950125], max|Ld|=0.332315, max|Ldd|=0.439478
+sigmaMin min=0.320385 (safe 0.100000), condJ max=7.450031 (warning 20.000000)
+waypoint q error=0.000e+00, goal q error=0.000e+00
+
+===== 开始 IPOPT/MA27 求解 =====
+Total number of variables............................:     2160
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      726
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:     1657
+Total number of inequality constraints...............:     4518
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     4518
+
+
+Number of Iterations....: 300
+
+                                   (scaled)                 (unscaled)
+Objective...............:  2.4487611202516377e+000   2.4487611202516377e+000
+Dual infeasibility......:  1.4754602345010790e+002   1.4754602345010790e+002
+Constraint violation....:  3.4377869862716111e+000   3.4377869862716111e+000
+Complementarity.........:  1.3824103825731940e-001   1.3824103825731940e-001
+Overall NLP error.......:  1.4754602345010790e+002   1.4754602345010790e+002
+
+
+Number of objective function evaluations             = 1020
+Number of objective gradient evaluations             = 301
+Number of equality constraint evaluations            = 1036
+Number of inequality constraint evaluations          = 1036
+Number of equality constraint Jacobian evaluations   = 301
+Number of inequality constraint Jacobian evaluations = 301
+Number of Lagrangian Hessian evaluations             = 300
+Total CPU secs in IPOPT (w/o function evaluations)   =      5.567
+Total CPU secs in NLP function evaluations           =    436.398
+
+EXIT: Maximum Number of Iterations Exceeded.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  |   5.33 s (  5.22ms)   5.33 s (  5.23ms)      1020
+       nlp_g  |   7.74 s (  7.47ms)   7.75 s (  7.48ms)      1036
+  nlp_grad_f  |   4.17 s ( 13.80ms)   4.17 s ( 13.82ms)       302
+  nlp_hess_l  | 345.03 s (  1.15 s) 345.03 s (  1.15 s)       300
+   nlp_jac_g  |  74.22 s (245.76ms)  74.22 s (245.77ms)       302
+       total  | 441.97 s (441.97 s) 441.97 s (441.97 s)         1
+
+===== IPOPT/MA27 求解摘要 =====
+return_status=Maximum_Iterations_Exceeded, iterations=300, solveTime=441.979 s, objective=2.44876112e+00
+max equality residual=3.438e+00, max inequality violation=-0.000e+00
+maxEq=3.438e+00, maxIneqViolation=-0.000e+00
+minClearance=0.009995 m, finalGap=0.010000 m, safeDistance=0.005000 m
+stage2 max |y_B|=3.520e-07, max |z_B-zGoal|=3.013e-06, max |rpy-rpyBox|=3.224e-06, min xdot_B=0.000e+00
+leg length=[1.078416, 1.950643], max|Ld|=0.290850, max|Ldd|=0.911619
+sigmaMin min=0.320176 (safe 0.100000), condJ max=7.455115 (warning 20.000000)
+waypoint q error=1.672e-07, goal q error=0.000e+00
+[警告: 导出的图像显示了坐标区工具栏。要从图像中删除坐标区工具栏，请再次导出。] 
+[警告: 导出的图像显示了坐标区工具栏。要从图像中删除坐标区工具栏，请再次导出。] 
+[警告: 导出的图像显示了坐标区工具栏。要从图像中删除坐标区工具栏，请再次导出。] 
+动画已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\cylinder_box_two_phase_cylinder_box_two_phase_ipopt_ma27_20260528_105547.mp4
+结果 MAT 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_cylinder_box_two_phase_ipopt_ma27_20260528_105547.mat
+summary 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\summary_cylinder_box_two_phase_ipopt_ma27_20260528_105547.txt
+MATLAB console log 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\console_cylinder_box_two_phase_ipopt_ma27_20260528_105547.txt

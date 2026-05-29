@@ -1,8 +1,8 @@
 function model = buildOptModelCustom()
-% buildOptModelCustom - 构建预对准 HS 优化用 6-UCU Stewart 模型
+% buildOptModelCustom - 构建圆柱体两阶段 HS 优化用 6-UCU Stewart 模型
 %
 % 文件用途：
-%   集中配置 Stewart 平台几何、执行器约束、奇异性参数、合成刚体动力学
+%   集中配置 Stewart 平台几何、执行器约束、奇异性参数、平台与运动圆柱体合成刚体动力学
 %   参数和目标函数归一化尺度。本函数是主优化入口的默认模型来源。
 %
 % 输入参数：
@@ -21,7 +21,7 @@ function model = buildOptModelCustom()
 %   绘图函数只读取 model，不在其他文件中散落硬编码平台参数。
 
 model = struct();
-model.name = '6-UCU Stewart 弹体预对准 HS 完整动力学模型';
+model.name = '6-UCU Stewart 圆柱体两阶段 HS 完整动力学模型';
 
 model.rA = 0.75;
 model.rB = 0.50;
@@ -62,16 +62,26 @@ model.dynamics.includeFriction = false;
 model.dynamics.includeMotorElectricalDynamics = false;
 model.dynamics.includeContactForce = false;
 model.dynamics.platformMass = 50;
-model.dynamics.munitionMass = 100;
+model.dynamics.objectMass = 100;
 model.dynamics.totalMass = 150;
 model.dynamics.comP = [0; 0; 0.10];
 model.dynamics.inertiaAtCOM_P = diag([5.0000, 16.4375, 18.8125]);
 model.g = [0; 0; -9.81];
 
-model.objective.weightForce = 1.0;
-model.objective.weightLegAccel = 0.10;
-model.objective.forceScale = 2000;
-model.objective.legAccelScale = 1.20;
+model.objective.weightNominalStage1 = 0.1;
+model.objective.weightForceRate = 0.08;
+model.objective.weightLegAccel = 0.30;
+model.objective.weightSingularity = 0.40;
+model.objective.weightPower = 1.0;
+model.objective.positionDeviationScale = 0.10;
+model.objective.attitudeDeviationScale = deg2rad(10);
+model.objective.attitudeDeviationWeight = 1.0;
+model.objective.forceRateScale = 1000;
+% 功率尺度单位为 W，机械功率由支链驱动力 F 与支链速度 Ld 相乘得到。
+model.objective.powerScale = 1000;
+model.objective.legAccelScale = 1.2;
+model.objective.singularityEpsilon = (0.05 * model.singularity.sigmaMinSafe)^2;
+model.objective.singularityScale = model.singularity.sigmaMinSafe^2 / 6;
 
 model.num.rcondMin = 1e-10;
 model.num.warnOnIllConditioned = true;

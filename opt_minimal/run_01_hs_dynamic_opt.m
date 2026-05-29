@@ -1,23 +1,20 @@
-%% run_01_hs_dynamic_opt - 压缩 Hermite-Simpson 预对准轨迹优化入口
+%% run_01_hs_dynamic_opt - 圆柱体-长方体两阶段 CasADi/IPOPT/MA27 隐式 HS 入口
 % 文件用途：
-%   使用 474 个决策变量、240 条压缩 HS 动力学等式和完整路径硬约束，求解 6-UCU
-%   Stewart 承载弹体从初始位姿到预对准位姿的自由空间轨迹优化问题。
+%   构建并求解 6-UCU Stewart 平台携带运动圆柱体到固定长方体下方的两阶段轨迹优化。
+%   默认链路使用 CasADi MX、IPOPT、MA27 和隐式 Hermite-Simpson 配点。
 %
 % 输入参数：
-%   本脚本无外部输入。模型由 buildOptModelCustom 配置，场景由 buildPreAlignmentScene
-%   自动计算 qPre，时间离散固定为 20 区间、21 节点、T=5 s。
+%   本脚本无外部输入。模型由 buildOptModelCustom 配置，场景由
+%   buildCylinderBoxTransferScene 自动计算。
 %
 % 输出参数：
-%   在 opt_minimal/results 下保存 compressed 标记的 MAT、命令行日志、诊断文本、PNG 图和
-%   5 秒 MP4/GIF 动画。MAT 包含 model、scene、disc、traj、denseReport、solverResult、refs。
+%   在 opt_minimal/results 下保存 MAT、summary、console log、PNG 图和动画。
 %
 % 核心公式：
-%   z=[Xinternal(:);Fnode(:);Fmid(:)]，Xinternal 为 12x19，Fnode 为 6x21，Fmid 为 6x20。
-%   中点状态 Xc=0.5*(Xk+Xk1)+h/8*(fk-fk1)，唯一 HS 等式为
-%   Xk1-Xk-h/6*(fk+4*fc+fk1)=0。
+%   q0 -> qWaypoint -> qGoal；阶段 2 满足 p_C^B=[s;0;z_goal]、姿态等于长方体姿态。
 %
-% 在优化链路中的作用：
-%   本脚本是 opt_minimal 默认主入口；Simscape 不参与优化，只在求解后导出 refs。
+% 优化链路位置：
+%   本脚本是 opt_minimal 的默认入口。Simscape 不进入 NLP，只在求解后导出 refs。
 clear; close all; clc;
 
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
@@ -25,165 +22,164 @@ optRoot = fullfile(projectRoot, 'opt_minimal');
 addpath(fullfile(projectRoot, 'src'));
 addpath(optRoot);
 
-if exist('fmincon', 'file') ~= 2
-    error('run_01_hs_dynamic_opt:MissingFmincon', '需要 Optimization Toolbox：未找到 fmincon。');
-end
-
 model = buildOptModelCustom();
-scene = buildPreAlignmentScene(model);
-disc = buildHSDiscretization(scene);
+scene = buildCylinderBoxTransferScene(model);
+disc = buildTwoPhaseHSDiscretization(scene);
 
 resultDir = fullfile(optRoot, 'results');
 if ~exist(resultDir, 'dir')
     mkdir(resultDir);
 end
 timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-diaryFile = fullfile(resultDir, ['hs_compressed_console_', timestamp, '.txt']);
+tag = ['cylinder_box_two_phase_ipopt_ma27_', timestamp];
+diaryFile = fullfile(resultDir, ['console_', tag, '.txt']);
 diary(diaryFile);
 diaryCleanup = onCleanup(@() diary('off')); %#ok<NASGU>
 
-fprintf('\n===== compressed HS 文件识别与接口切换 =====\n');
-fprintf('默认入口：run_01_hs_dynamic_opt.m\n');
-fprintf('新增/调用：packHSDecisionCompressed, unpackHSDecisionCompressed, computeHSMidpointStateCompressed,\n');
-fprintf('          buildInitialGuessQuinticHSCompressed, evaluateCompressedTrajectory,\n');
-fprintf('          costHSDynamicCompressed, nonlconHSDynamicCompressed。\n');
-fprintf('停止主流程调用旧 Q/V/A/Ac 打包、中点状态变量和端点 ceq。\n');
+fprintf('\n===== 圆柱体-长方体两阶段 CasADi/IPOPT/MA27 隐式 HS 默认入口 =====\n');
+fprintf('入口：run_01_hs_dynamic_opt.m\n');
+fprintf('qWaypoint = [% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qWaypoint);
+fprintf('qGoal     = [% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qGoal);
+fprintf('safeDistance=%.6f m, finalGap=%.6f m\n', ...
+    scene.collision.safeDistance, scene.collision.finalGap);
+fprintf('objective weights W1: nominalStage1=%.2f, forceRate=%.2f, legAccel=%.2f, singularity=%.2f, power=%.2f\n', ...
+    model.objective.weightNominalStage1, model.objective.weightForceRate, ...
+    model.objective.weightLegAccel, model.objective.weightSingularity, model.objective.weightPower);
+fprintf('objective scales: L_dev=%.6f m, theta_dev=%.6f rad, forceRateScale=%.6f N/s, powerScale=%.6f W, legAccelScale=%.6f m/s^2\n', ...
+    model.objective.positionDeviationScale, model.objective.attitudeDeviationScale, ...
+    model.objective.forceRateScale, model.objective.powerScale, model.objective.legAccelScale);
+fprintf('T1=%.3f s, T2=%.3f s, N1=%d, N2=%d, h=%.6f s\n', ...
+    disc.durationApproach, disc.durationInsertion, disc.numIntervalsApproach, ...
+    disc.numIntervalsInsertion, disc.h);
 
-fprintf('\n===== 预对准场景回归检查 =====\n');
-fprintf('qPre = [% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qPre);
-fprintf('目标规模：numel(z)=474, numel(ceq)=240, numel(c)=2706。\n');
+ma27Info = setupCasadiIpoptMa27(projectRoot);
 
-[z0, initialGuess] = buildInitialGuessQuinticHSCompressed(model, scene, disc);
-if numel(z0) ~= 474
-    error('run_01_hs_dynamic_opt:InvalidDecisionLength', '初值变量长度必须为 474，当前为 %d。', numel(z0));
+expectedSizes = computeExpectedSizes(disc);
+fprintf('目标规模：numIntervals=%d, numel(z)=%d, numel(gEq)=%d, numel(cIneq)=%d\n', ...
+    disc.numIntervals, expectedSizes.numZ, expectedSizes.numEq, expectedSizes.numIneq);
+
+[z0, initialGuess] = buildInitialGuessTwoPhaseHSImplicit(model, scene, disc);
+if numel(z0) ~= expectedSizes.numZ
+    error('run_01_hs_dynamic_opt:InvalidInitialLength', ...
+        '两阶段隐式初值长度必须为 %d，当前为 %d。', expectedSizes.numZ, numel(z0));
 end
 
+fprintf('\n===== 构建 CasADi MX 两阶段隐式 NLP =====\n');
+buildTimer = tic;
+nlpData = buildCasadiImplicitHSNLP(model, scene, disc, initialGuess);
+buildTime = toc(buildTimer);
+fprintf('NLP 构建完成：numel(z)=%d, numel(gEq)=%d, numel(cIneq)=%d, buildTime=%.3f s\n', ...
+    nlpData.sizes.numZ, nlpData.sizes.numEq, nlpData.sizes.numIneq, buildTime);
+
 tic;
-J0 = costHSDynamicCompressed(z0, model, scene, disc);
-tObj0 = toc;
-tic;
-[c0, ceq0] = nonlconHSDynamicCompressed(z0, model, scene, disc);
-tCon0 = toc;
-assert(numel(c0) == 2706, '路径不等式数量应为 2706。');
-assert(numel(ceq0) == 240, 'compressed HS 等式数量应为 240。');
+[J0, gEq0, cIneq0] = nlpData.eval(z0);
+tEval0 = toc;
+J0 = full(J0);
+gEq0 = full(gEq0);
+cIneq0 = full(cIneq0);
+initialTraj = rebuildImplicitTrajectory(z0, model, scene, disc);
+initialReport = validateTrajectoryDenseImplicit(initialTraj, model, scene, disc);
+initialObjectiveBreakdown = computeObjectiveBreakdownImplicit(initialTraj, model, scene, disc, initialGuess);
+initialFile = fullfile(resultDir, ['initial_', tag, '.mat']);
+save(initialFile, 'model', 'scene', 'disc', 'z0', 'initialGuess', 'initialTraj', ...
+    'initialReport', 'initialObjectiveBreakdown', 'J0', 'gEq0', 'cIneq0', 'ma27Info', 'buildTime');
 
-initialTraj = rebuildCompressedTrajectory(z0, model, scene, disc);
-initialReport = validateTrajectoryDense(initialTraj, model, scene, disc);
-initialFile = fullfile(resultDir, ['hs_compressed_initial_', timestamp, '.mat']);
-save(initialFile, 'model', 'scene', 'disc', 'z0', 'initialGuess', 'initialTraj', 'initialReport', 'J0', 'c0', 'ceq0');
+fprintf('\n===== 初值诊断 =====\n');
+fprintf('J0=%.8e, evalTime=%.3f s, maxEq=%.3e, maxIneqViolation=%.3e\n', ...
+    J0, tEval0, max(abs(gEq0)), max([cIneq0(:); 0]));
+printTrajectorySummary(initialTraj, initialReport, cIneq0, gEq0, model, scene);
+printObjectiveBreakdown(initialObjectiveBreakdown, '初值目标函数分解');
 
-fprintf('\n===== 五次插值 compressed 初值诊断 =====\n');
-fprintf('numel(z0)=%d, numel(c0)=%d, numel(ceq0)=%d\n', numel(z0), numel(c0), numel(ceq0));
-fprintf('目标初值 J0=%.8e；目标单次评价 %.3f s；nonlcon 单次评价 %.3f s\n', J0, tObj0, tCon0);
-printTrajectorySummary(initialTraj, initialReport, c0, ceq0, model, scene);
-
-[lb, ub] = buildDecisionBoundsCompressed(disc, model);
-options = buildFminconOptions();
-
-fprintf('\n===== 开始 fmincon-SQP compressed 完整硬约束 NLP 求解 =====\n');
+fprintf('\n===== 开始 IPOPT/MA27 求解 =====\n');
 solveTimer = tic;
-[zOpt, fval, exitflag, output, lambda, grad, hessian] = fmincon( ...
-    @(z) costHSDynamicCompressed(z, model, scene, disc), ...
-    z0, [], [], [], [], lb, ub, ...
-    @(z) nonlconHSDynamicCompressed(z, model, scene, disc), options);
+sol = nlpData.solver('x0', z0, 'lbx', nlpData.lbz, 'ubx', nlpData.ubz, ...
+    'lbg', nlpData.lbg, 'ubg', nlpData.ubg);
 solveTime = toc(solveTimer);
+stats = nlpData.solver.stats();
+zOpt = full(sol.x);
+fval = full(sol.f);
+gOpt = full(sol.g);
+gEqOpt = gOpt(1:nlpData.sizes.numEq);
+cOpt = gOpt(nlpData.sizes.numEq+1:end);
 
-traj = rebuildCompressedTrajectory(zOpt, model, scene, disc);
-[cOpt, ceqOpt] = nonlconHSDynamicCompressed(zOpt, model, scene, disc);
-denseReport = validateTrajectoryDense(traj, model, scene, disc);
-solverResult = struct('fval', fval, 'exitflag', exitflag, 'output', output, ...
-    'lambda', lambda, 'grad', grad, 'hessian', hessian, 'solveTime', solveTime);
-result = analyzeHSResult(traj, denseReport, cOpt, ceqOpt, solverResult);
+traj = rebuildImplicitTrajectory(zOpt, model, scene, disc);
+denseReport = validateTrajectoryDenseImplicit(traj, model, scene, disc);
+objectiveBreakdown = computeObjectiveBreakdownImplicit(traj, model, scene, disc, initialGuess);
+solverResult = buildSolverResult(stats, solveTime, fval, gEqOpt, cOpt, ma27Info);
+result = analyzeImplicitResult(traj, denseReport, cOpt, gEqOpt, solverResult, objectiveBreakdown);
 
-fprintf('\n===== compressed 最终解诊断 =====\n');
-fprintf('求解总耗时 %.3f s，iterations=%d，funcCount=%d\n', ...
-    solveTime, output.iterations, output.funcCount);
-fprintf('最终目标函数值：%.8e，exitflag=%d\n', fval, exitflag);
-fprintf('fmincon 退出信息：%s\n', output.message);
-printTrajectorySummary(traj, denseReport, cOpt, ceqOpt, model, scene);
-if result.successFlag
-    fprintf('最终轨迹通过 compressed HS 节点/中点硬约束验证。\n');
-else
-    fprintf('最终轨迹未通过全部硬约束验证，请查看 result.constraint 和 denseReport。\n');
-end
+fprintf('\n===== IPOPT/MA27 求解摘要 =====\n');
+fprintf('return_status=%s, iterations=%d, solveTime=%.3f s, objective=%.8e\n', ...
+    solverResult.return_status, solverResult.iterations, solveTime, fval);
+fprintf('max equality residual=%.3e, max inequality violation=%.3e\n', ...
+    max(abs(gEqOpt)), max([cOpt(:); 0]));
+printTrajectorySummary(traj, denseReport, cOpt, gEqOpt, model, scene);
+printObjectiveBreakdown(objectiveBreakdown, '优化后目标函数分解');
 
-refs = exportTrajectoryToSimscape(traj, scene);
-resultFile = fullfile(resultDir, ['hs_compressed_result_', timestamp, '.mat']);
-save(resultFile, 'model', 'scene', 'disc', 'traj', 'denseReport', 'solverResult', 'refs', ...
-    'result', 'initialReport', 'J0', 'tObj0', 'tCon0');
+refs = exportTrajectoryToSimscape(traj, scene, disc);
+resultFile = fullfile(resultDir, ['result_', tag, '.mat']);
+save(resultFile, 'model', 'scene', 'disc', 'traj', 'denseReport', 'solverResult', ...
+    'refs', 'result', 'objectiveBreakdown', 'initialReport', 'initialObjectiveBreakdown', ...
+    'J0', 'tEval0', 'buildTime', 'ma27Info', ...
+    'zOpt', 'gEqOpt', 'cOpt');
 
-plotFiles = plotOptResult(traj, model, scene, result, resultDir, timestamp);
-animationFile = animateStewartTrajectory(traj, model, scene, resultDir, timestamp);
-logFile = fullfile(resultDir, ['hs_compressed_summary_', timestamp, '.txt']);
+plotFiles = plotOptResult(traj, model, scene, result, resultDir, tag);
+animationFile = animateStewartTrajectory(traj, model, scene, resultDir, tag);
+logFile = fullfile(resultDir, ['summary_', tag, '.txt']);
 writeSummaryLog(logFile, resultFile, plotFiles, animationFile, result, denseReport, solverResult, ...
-    initialReport, J0, tObj0, tCon0);
+    initialReport, J0, tEval0, ma27Info, nlpData.sizes, objectiveBreakdown, ...
+    initialObjectiveBreakdown, scene, disc, model);
 
 fprintf('结果 MAT 已保存：%s\n', resultFile);
-fprintf('诊断文本已保存：%s\n', logFile);
-fprintf('MATLAB 命令行日志已保存：%s\n', diaryFile);
+fprintf('summary 已保存：%s\n', logFile);
+fprintf('MATLAB console log 已保存：%s\n', diaryFile);
 
-function disc = buildHSDiscretization(scene)
-% buildHSDiscretization - 构建固定 20 区间 HS 离散参数
+function disc = buildTwoPhaseHSDiscretization(scene)
+% buildTwoPhaseHSDiscretization - 构建两阶段统一 HS 离散参数
 disc = struct();
-disc.numIntervals = 20;
-disc.numNodes = 21;
-disc.numMidpoints = 20;
-disc.duration = scene.preAlign.duration;
-disc.h = disc.duration / disc.numIntervals;
+disc.numIntervalsApproach = scene.phase.numIntervalsApproach;
+disc.numIntervalsInsertion = scene.phase.numIntervalsInsertion;
+disc.numIntervals = disc.numIntervalsApproach + disc.numIntervalsInsertion;
+disc.numNodes = disc.numIntervals + 1;
+disc.numMidpoints = disc.numIntervals;
+disc.durationApproach = scene.phase.durationApproach;
+disc.durationInsertion = scene.phase.durationInsertion;
+disc.duration = disc.durationApproach + disc.durationInsertion;
+disc.hApproach = disc.durationApproach / disc.numIntervalsApproach;
+disc.hInsertion = disc.durationInsertion / disc.numIntervalsInsertion;
+if abs(disc.hApproach - disc.hInsertion) > 1e-12
+    error('run_01_hs_dynamic_opt:NonUniformStep', '两阶段默认要求统一步长。');
+end
+disc.h = disc.hApproach;
 disc.tNode = linspace(0, disc.duration, disc.numNodes);
 disc.tMid = disc.tNode(1:end-1) + disc.h/2;
+disc.waypointNodeIndex = disc.numIntervalsApproach + 1;
+disc.stage2NodeIndices = disc.waypointNodeIndex:disc.numNodes;
+disc.stage2MidIndices = (disc.numIntervalsApproach + 1):disc.numIntervals;
+disc.numStage1CollisionPoints = (disc.numIntervalsApproach + 1) + disc.numIntervalsApproach;
 end
 
-function [lb, ub] = buildDecisionBoundsCompressed(disc, model)
-% buildDecisionBoundsCompressed - 仅对 Fnode/Fmid 设置 ±2000 N 上下界
-internalCount = 12 * (disc.numNodes - 2);
-nodeForceCount = 6 * disc.numNodes;
-midForceCount = 6 * disc.numMidpoints;
-totalLength = internalCount + nodeForceCount + midForceCount;
-lb = -inf(totalLength, 1);
-ub = inf(totalLength, 1);
-forceLower = [repmat(model.actuator.forceMin, disc.numNodes, 1); ...
-              repmat(model.actuator.forceMin, disc.numMidpoints, 1)];
-forceUpper = [repmat(model.actuator.forceMax, disc.numNodes, 1); ...
-              repmat(model.actuator.forceMax, disc.numMidpoints, 1)];
-forceStart = internalCount + 1;
-lb(forceStart:end) = forceLower;
-ub(forceStart:end) = forceUpper;
-if totalLength ~= 474
-    error('run_01_hs_dynamic_opt:InvalidBoundLength', '压缩变量边界长度必须为 474。');
-end
+function sizes = computeExpectedSizes(disc)
+% computeExpectedSizes - 根据两阶段区间数计算隐式 HS 变量和约束规模
+sizes = struct();
+sizes.numZ = 12*(disc.numNodes - 2) + 6*disc.numNodes + 6*disc.numMidpoints + ...
+    6*disc.numNodes + 6*disc.numMidpoints + 8*disc.numStage1CollisionPoints;
+sizes.numEq = 12*disc.numIntervals + 6*(disc.numNodes + disc.numMidpoints) + 6 + ...
+    5*(disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + disc.numStage1CollisionPoints;
+sizes.numIneq = 36*(disc.numNodes + disc.numMidpoints) + ...
+    (disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + 10*disc.numStage1CollisionPoints;
 end
 
-function options = buildFminconOptions()
-% buildFminconOptions - 构建有限差分 SQP 设置
-maxIterations = 1000;
-maxIterEnv = str2double(getenv('HS_MAX_ITER'));
-if isfinite(maxIterEnv) && maxIterEnv > 0
-    maxIterations = maxIterEnv;
-    fprintf('检测到 HS_MAX_ITER=%.0f，本次仅按该迭代上限运行诊断。\n', maxIterations);
-end
-options = optimoptions('fmincon', ...
-    'Algorithm', 'sqp', ...
-    'Display', 'iter-detailed', ...
-    'SpecifyObjectiveGradient', false, ...
-    'SpecifyConstraintGradient', false, ...
-    'FiniteDifferenceType', 'forward', ...
-    'ScaleProblem', true, ...
-    'MaxIterations', maxIterations, ...
-    'MaxFunctionEvaluations', 5e5, ...
-    'ConstraintTolerance', 1e-6, ...
-    'OptimalityTolerance', 1e-6, ...
-    'StepTolerance', 1e-10);
-end
-
-function traj = rebuildCompressedTrajectory(z, model, scene, disc)
-% rebuildCompressedTrajectory - 从 compressed 决策变量重建绘图、验证和导出所需轨迹结构
-data = evaluateCompressedTrajectory(z, model, scene, disc);
+function traj = rebuildImplicitTrajectory(z, model, scene, disc)
+% rebuildImplicitTrajectory - 从隐式决策变量重建绘图、验证和导出所需轨迹
+data = evaluateImplicitTrajectoryNumeric(z, model, scene, disc);
 traj = struct();
 traj.t = disc.tNode;
 traj.tc = disc.tMid;
 traj.Xnode = data.Xnode;
 traj.Xmid = data.Xmid;
+traj.Anode = data.Anode;
+traj.Amid = data.Amid;
 traj.Unode = data.Fnode;
 traj.Umid = data.Fmid;
 traj.Q = data.Xnode(1:6, :);
@@ -191,9 +187,12 @@ traj.V = data.Xnode(7:12, :);
 traj.Qmid = data.Xmid(1:6, :);
 traj.Vmid = data.Xmid(7:12, :);
 traj.xStart = [scene.q0; scene.qd0];
-traj.xEnd = [scene.qPre; scene.qdPre];
+traj.xWaypoint = [scene.qWaypoint; data.Xnode(7:12, disc.waypointNodeIndex)];
+traj.xEnd = [scene.qGoal; scene.qdGoal];
 traj.nodePoints = data.nodePoint;
 traj.midPoints = data.midPoint;
+traj.nodeDynResidual = data.nodeDynResidual;
+traj.midDynResidual = data.midDynResidual;
 
 traj.L = collectPointField(data.nodePoint, 'L');
 traj.Ld = collectPointField(data.nodePoint, 'Ld');
@@ -223,56 +222,158 @@ for index = 1:numel(points)
 end
 end
 
-function printTrajectorySummary(traj, report, c, ceq, model, scene)
-% printTrajectorySummary - 输出 compressed 轨迹约束极值
-fprintf('qPre 自动计算值：[% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qPre);
-fprintf('腿长范围 [m]：%.6f 到 %.6f，约束 %.3f 到 %.3f\n', ...
-    report.minLength, report.maxLength, model.lmin(1), model.lmax(1));
-fprintf('最大 |腿速| [m/s]：%.6f，限制 %.6f\n', report.maxAbsLd, max(model.actuator.ldotMax));
-fprintf('最大 |腿加速度| [m/s^2]：%.6f，限制 %.6f\n', report.maxAbsLdd, max(model.actuator.lddotMax));
-fprintf('最小 sigmaMin：%.6f，阈值 %.6f；最大 condJ：%.6f，警戒 %.6f\n', ...
-    report.minSigmaMin, model.singularity.sigmaMinSafe, report.maxCondJ, model.singularity.condWarning);
-fprintf('最小碰撞间隙 [m]：%.6f，安全距离 %.6f\n', report.minClearance, scene.collision.safeDistance);
-fprintf('驱动力范围 [N]：%.3f 到 %.3f，限制 %.0f 到 %.0f\n', ...
-    min([traj.Unode(:); traj.Umid(:)]), max([traj.Unode(:); traj.Umid(:)]), ...
-    min(model.actuator.forceMin), max(model.actuator.forceMax));
-fprintf('非线性约束数量：%d，最大正违反量：%.3e\n', numel(c), max([c(:); 0]));
-fprintf('compressed HS 等式数量：%d，最大绝对残差：%.3e\n', numel(ceq), max(abs(ceq(:))));
+function solverResult = buildSolverResult(stats, solveTime, fval, gEq, cIneq, ma27Info)
+% buildSolverResult - 统一保存 IPOPT 统计和约束残差
+solverResult = struct();
+solverResult.return_status = char(stats.return_status);
+solverResult.success = isfield(stats, 'success') && stats.success;
+solverResult.iterations = stats.iter_count;
+solverResult.solveTime = solveTime;
+solverResult.fval = fval;
+solverResult.maxEqResidual = max(abs(gEq(:)));
+solverResult.maxIneqViolation = max([cIneq(:); 0]);
+solverResult.ma27Info = ma27Info;
+solverResult.stats = stats;
 end
 
-function writeSummaryLog(logFile, resultFile, plotFiles, animationFile, result, denseReport, solverResult, initialReport, J0, tObj0, tCon0)
-% writeSummaryLog - 保存 UTF-8 文本诊断
-fid = fopen(logFile, 'w', 'n', 'UTF-8');
-if fid < 0
-    warning('run_01_hs_dynamic_opt:LogOpenFailed', '无法写入诊断文本：%s', logFile);
-    return;
+function result = analyzeImplicitResult(traj, denseReport, c, ceq, solverResult, objectiveBreakdown)
+% analyzeImplicitResult - 汇总 NLP 与求解后路径检查通过标识
+result = struct();
+result.err.startStateNorm = norm(traj.Xnode(:, 1) - traj.xStart);
+result.err.waypointPositionNorm = norm(traj.Xnode(1:6, denseReport.disc.waypointNodeIndex) - denseReport.scene.qWaypoint);
+result.err.endStateNorm = norm(traj.Xnode(:, end) - traj.xEnd);
+result.err.hsEqualityMax = max(abs(ceq(:)));
+result.constraint.maxPathViolation = max([c(:); 0]);
+result.constraint.denseMaxPathViolation = denseReport.maxPathViolation;
+result.constraint.minClearance = denseReport.minClearance;
+result.constraint.finalGap = denseReport.finalGap;
+result.constraint.minSigmaMin = denseReport.minSigmaMin;
+result.constraint.maxCondJ = denseReport.maxCondJ;
+result.constraint.forceUpperViolationMax = denseReport.forceUpperViolationMax;
+result.constraint.forceLowerViolationMax = denseReport.forceLowerViolationMax;
+result.constraint.minLength = denseReport.minLength;
+result.constraint.maxLength = denseReport.maxLength;
+result.constraint.maxAbsLd = denseReport.maxAbsLd;
+result.constraint.maxAbsLdd = denseReport.maxAbsLdd;
+result.nlpPassed = solverResult.success && ...
+    solverResult.maxEqResidual <= 1e-6 && solverResult.maxIneqViolation <= 1e-6;
+result.postCheck.pathPassed = denseReport.pathPassed;
+result.postCheck.forcePassed = denseReport.forcePassed;
+result.postCheck.singularityPassed = denseReport.singularityPassed;
+result.postCheck.kinematicsPassed = denseReport.kinematicsPassed;
+result.postCheck.stateDynamicsPassed = denseReport.stateDynamicsPassed;
+result.postCheck.geometricDynamicsPassed = denseReport.geometricDynamicsPassed;
+result.postCheck.stage2Passed = denseReport.stage2Passed;
+result.solverTrajectoryPassed = result.nlpPassed && denseReport.solverTrajectoryPassed;
+result.engineeringTrajectoryPassed = result.nlpPassed && denseReport.engineeringTrajectoryPassed;
+result.objectiveBreakdown = objectiveBreakdown;
+result.solver = solverResult;
 end
+
+function printTrajectorySummary(traj, denseReport, c, ceq, model, scene)
+% printTrajectorySummary - 输出圆柱体两阶段轨迹关键约束摘要
+fprintf('maxEq=%.3e, maxIneqViolation=%.3e\n', max(abs(ceq(:))), max([c(:); 0]));
+fprintf('minClearance=%.6f m, finalGap=%.6f m, safeDistance=%.6f m\n', ...
+    denseReport.minClearance, denseReport.finalGap, scene.collision.safeDistance);
+fprintf('stage1 minClearance=%.6f m, insertion target gap=%.6f m\n', ...
+    denseReport.minStage1Clearance, scene.collision.finalGap);
+fprintf('stage2 max |y_B|=%.3e, max |z_B-zGoal|=%.3e, max |rpy-rpyBox|=%.3e, min xdot_B=%.3e\n', ...
+    denseReport.stage2MaxLateralError, denseReport.stage2MaxHeightError, ...
+    denseReport.stage2MaxAttitudeError, denseReport.stage2MinInsertionSpeed);
+fprintf('stage2 continuous gap min=%.6f m, fixed-normal gap error=%.3e\n', ...
+    denseReport.insertionContinuousReport.sampleMinGap, ...
+    denseReport.insertionContinuousReport.sampleMaxGapError);
+fprintf('leg length=[%.6f, %.6f], max|Ld|=%.6f, max|Ldd|=%.6f\n', ...
+    denseReport.minLength, denseReport.maxLength, denseReport.maxAbsLd, denseReport.maxAbsLdd);
+fprintf('max|F|=%.6f N, forcePassed=%d, force violation upper/lower=[%.3e, %.3e]\n', ...
+    denseReport.maxAbsForce, denseReport.forcePassed, ...
+    denseReport.forceUpperViolationMax, denseReport.forceLowerViolationMax);
+fprintf('sigmaMin min=%.6f (safe %.6f), condJ max=%.6f (warning %.6f)\n', ...
+    denseReport.minSigmaMin, model.singularity.sigmaMinSafe, ...
+    denseReport.maxCondJ, model.singularity.condWarning);
+fprintf('waypoint q error=%.3e, goal q error=%.3e\n', ...
+    norm(traj.Q(:, denseReport.disc.waypointNodeIndex) - scene.qWaypoint), ...
+    norm(traj.Q(:, end) - scene.qGoal));
+end
+
+function printObjectiveBreakdown(breakdown, titleText)
+% printObjectiveBreakdown - 打印新四项目标函数加权值与占比
+fprintf('\n===== %s =====\n', titleText);
+fprintf('objectiveTotal=%.8e\n', breakdown.total);
+fprintf('nominalStage1=%.8e (%.2f%%)\n', ...
+    breakdown.nominalStage1, breakdown.percent.nominalStage1);
+fprintf('forceRate=%.8e (%.2f%%)\n', ...
+    breakdown.forceRate, breakdown.percent.forceRate);
+fprintf('power=%.8e (%.2f%%)\n', ...
+    breakdown.power, breakdown.percent.power);
+fprintf('legAccel=%.8e (%.2f%%)\n', ...
+    breakdown.legAccel, breakdown.percent.legAccel);
+fprintf('singularity=%.8e (%.2f%%)\n', ...
+    breakdown.singularity, breakdown.percent.singularity);
+end
+
+function writeSummaryLog(logFile, resultFile, plotFiles, animationFile, result, denseReport, solverResult, ...
+    initialReport, J0, tEval0, ma27Info, sizes, objectiveBreakdown, initialObjectiveBreakdown, scene, disc, model)
+% writeSummaryLog - 写出默认入口摘要文本
+fid = fopen(logFile, 'w');
 cleanup = onCleanup(@() fclose(fid)); %#ok<NASGU>
-fprintf(fid, 'Compressed HS pre-alignment trajectory optimization summary\n');
-fprintf(fid, 'MAT: %s\n', resultFile);
-fprintf(fid, 'decision variables: 474\n');
-fprintf(fid, 'HS equalities: 240\n');
-fprintf(fid, 'path inequalities: 2706\n');
-fprintf(fid, 'initial objective: %.12e\n', J0);
-fprintf(fid, 'initial objective eval time: %.6f s\n', tObj0);
-fprintf(fid, 'initial nonlcon eval time: %.6f s\n', tCon0);
-fprintf(fid, 'initial max path violation: %.12e\n', initialReport.maxPathViolation);
-fprintf(fid, 'initial min clearance: %.12e\n', initialReport.minClearance);
-fprintf(fid, 'exitflag: %d\n', solverResult.exitflag);
-fprintf(fid, 'iterations: %d\n', solverResult.output.iterations);
-fprintf(fid, 'funcCount: %d\n', solverResult.output.funcCount);
-fprintf(fid, 'solve time: %.6f s\n', solverResult.solveTime);
-fprintf(fid, 'message: %s\n', solverResult.output.message);
-fprintf(fid, 'fval: %.12e\n', solverResult.fval);
-fprintf(fid, 'final successFlag: %d\n', result.successFlag);
-fprintf(fid, 'final max path violation: %.12e\n', result.constraint.maxPathViolation);
-fprintf(fid, 'final dense max path violation: %.12e\n', result.constraint.denseMaxPathViolation);
-fprintf(fid, 'final HS equality max: %.12e\n', result.err.hsEqualityMax);
-fprintf(fid, 'final min clearance: %.12e\n', denseReport.minClearance);
-fprintf(fid, 'final max abs force: %.12e\n', denseReport.maxAbsForce);
-fprintf(fid, 'plots:\n');
-for index = 1:numel(plotFiles)
-    fprintf(fid, '  %s\n', plotFiles{index});
+fprintf(fid, 'cylinder_box_two_phase summary\n');
+fprintf(fid, 'resultFile: %s\n', resultFile);
+fprintf(fid, 'return_status: %s\n', solverResult.return_status);
+fprintf(fid, 'success: %d\n', solverResult.success);
+fprintf(fid, 'iterations: %d\n', solverResult.iterations);
+fprintf(fid, 'solveTime: %.6f\n', solverResult.solveTime);
+fprintf(fid, 'objective: %.12e\n', solverResult.fval);
+fprintf(fid, 'objectiveTotalBreakdown: %.12e\n', objectiveBreakdown.total);
+fprintf(fid, 'objectiveNominalStage1: %.12e\n', objectiveBreakdown.nominalStage1);
+fprintf(fid, 'objectiveForceRate: %.12e\n', objectiveBreakdown.forceRate);
+fprintf(fid, 'objectivePower: %.12e\n', objectiveBreakdown.power);
+fprintf(fid, 'objectiveLegAccel: %.12e\n', objectiveBreakdown.legAccel);
+fprintf(fid, 'objectiveSingularity: %.12e\n', objectiveBreakdown.singularity);
+fprintf(fid, 'objectiveNominalStage1Percent: %.6f\n', objectiveBreakdown.percent.nominalStage1);
+fprintf(fid, 'objectiveForceRatePercent: %.6f\n', objectiveBreakdown.percent.forceRate);
+fprintf(fid, 'objectivePowerPercent: %.6f\n', objectiveBreakdown.percent.power);
+fprintf(fid, 'objectiveLegAccelPercent: %.6f\n', objectiveBreakdown.percent.legAccel);
+fprintf(fid, 'objectiveSingularityPercent: %.6f\n', objectiveBreakdown.percent.singularity);
+fprintf(fid, 'initialObjectiveNominalStage1: %.12e\n', initialObjectiveBreakdown.nominalStage1);
+fprintf(fid, 'weightNominalStage1: %.6f\n', model.objective.weightNominalStage1);
+fprintf(fid, 'weightForceRate: %.6f\n', model.objective.weightForceRate);
+fprintf(fid, 'weightLegAccel: %.6f\n', model.objective.weightLegAccel);
+fprintf(fid, 'weightSingularity: %.6f\n', model.objective.weightSingularity);
+fprintf(fid, 'weightPower: %.6f\n', model.objective.weightPower);
+fprintf(fid, 'positionDeviationScale: %.12e\n', model.objective.positionDeviationScale);
+fprintf(fid, 'attitudeDeviationScale: %.12e\n', model.objective.attitudeDeviationScale);
+fprintf(fid, 'forceRateScale: %.12e\n', model.objective.forceRateScale);
+fprintf(fid, 'powerScale: %.12e\n', model.objective.powerScale);
+fprintf(fid, 'safeDistance: %.12e\n', scene.collision.safeDistance);
+fprintf(fid, 'finalGapTarget: %.12e\n', scene.collision.finalGap);
+fprintf(fid, 'maxEqResidual: %.12e\n', solverResult.maxEqResidual);
+fprintf(fid, 'maxIneqViolation: %.12e\n', solverResult.maxIneqViolation);
+fprintf(fid, 'initialJ: %.12e\n', J0);
+fprintf(fid, 'initialEvalTime: %.6f\n', tEval0);
+fprintf(fid, 'initialMinClearance: %.12e\n', initialReport.minClearance);
+fprintf(fid, 'numZ: %d\nnumEq: %d\nnumIneq: %d\n', sizes.numZ, sizes.numEq, sizes.numIneq);
+fprintf(fid, 'T1: %.6f\nT2: %.6f\nN1: %d\nN2: %d\n', ...
+    disc.durationApproach, disc.durationInsertion, disc.numIntervalsApproach, disc.numIntervalsInsertion);
+fprintf(fid, 'qWaypoint: %s\n', mat2str(scene.qWaypoint, 10));
+fprintf(fid, 'qGoal: %s\n', mat2str(scene.qGoal, 10));
+fprintf(fid, 'minClearance: %.12e\n', denseReport.minClearance);
+fprintf(fid, 'minStage1Clearance: %.12e\n', denseReport.minStage1Clearance);
+fprintf(fid, 'finalGap: %.12e\n', denseReport.finalGap);
+fprintf(fid, 'stage2MaxLateralError: %.12e\n', denseReport.stage2MaxLateralError);
+fprintf(fid, 'stage2MaxHeightError: %.12e\n', denseReport.stage2MaxHeightError);
+fprintf(fid, 'stage2MaxAttitudeError: %.12e\n', denseReport.stage2MaxAttitudeError);
+fprintf(fid, 'stage2MinInsertionSpeed: %.12e\n', denseReport.stage2MinInsertionSpeed);
+fprintf(fid, 'stage2ContinuousMinGap: %.12e\n', denseReport.insertionContinuousReport.sampleMinGap);
+fprintf(fid, 'stage2ContinuousGapError: %.12e\n', denseReport.insertionContinuousReport.sampleMaxGapError);
+fprintf(fid, 'minSigmaMin: %.12e\nmaxCondJ: %.12e\n', denseReport.minSigmaMin, denseReport.maxCondJ);
+fprintf(fid, 'minLength: %.12e\nmaxLength: %.12e\nmaxAbsLd: %.12e\nmaxAbsLdd: %.12e\n', ...
+    denseReport.minLength, denseReport.maxLength, denseReport.maxAbsLd, denseReport.maxAbsLdd);
+fprintf(fid, 'maxAbsForce: %.12e\nforcePassed: %d\n', denseReport.maxAbsForce, denseReport.forcePassed);
+fprintf(fid, 'ma27Info: %s\n', evalc('disp(ma27Info)'));
+for i = 1:numel(plotFiles)
+    fprintf(fid, 'plot%d: %s\n', i, plotFiles{i});
 end
 fprintf(fid, 'animation: %s\n', animationFile);
+fprintf(fid, 'engineeringTrajectoryPassed: %d\n', result.engineeringTrajectoryPassed);
 end

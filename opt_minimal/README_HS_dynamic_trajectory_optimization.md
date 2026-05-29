@@ -1,58 +1,76 @@
-# Stewart Hermite-Simpson 完整动力学轨迹优化
+# Stewart 两阶段隐式 Hermite-Simpson 轨迹优化
 
-## 本模块解决什么问题
+`opt_minimal/run_01_hs_dynamic_opt.m` 是当前默认入口。默认链路使用 CasADi MX、IPOPT 和 MA27，为 6-UCU Stewart 平台生成携带运动圆柱体接近并送入固定长方体下方的两阶段轨迹。Simscape 不进入 NLP，只在求解后通过 `exportTrajectoryToSimscape.m` 导出离线验证参考量。
 
-本模块使用 Hermite-Simpson 直接配点法，为自定义 6-UCU Stewart 平台生成从 `q0` 到 `qf` 的完整动力学约束轨迹。优化器在 MATLAB 中运行，Simscape 只保留为可选参考和后续验证接口。
+## 当前默认流程
 
-## 为什么从有限差分节点法改为 Hermite-Simpson
+1. `buildOptModelCustom.m` 构建 Stewart 几何、执行器硬约束、合成刚体动力学和目标函数权重。
+2. `buildCylinderBoxTransferScene.m` 构建圆柱体-长方体场景、两阶段时间网格、`q0`、`qWaypoint` 和 `qGoal`。
+3. `buildInitialGuessTwoPhaseHSImplicit.m` 生成两阶段五次时间律初值，并把第一阶段初值保存为标称参考轨迹。
+4. `buildCasadiImplicitHSNLP.m` 构建隐式 HS NLP 并调用 IPOPT/MA27 求解。
+5. 求解后重建轨迹，运行 dense 后验验证，保存 MAT、summary、console log、PNG 和 MP4。
 
-旧方法只优化位姿节点，并用有限差分估计速度和加速度。这样端点速度、加速度和积分一致性都比较间接。Hermite-Simpson 方法把位姿 `Q`、速度 `V`、加速度 `A` 和中点加速度 `Ac` 都作为优化变量，再用配点等式保证积分一致性，更适合轨迹优化。
+## 场景参数
 
-## 优化变量
-
-决策变量统一为：
-
-```matlab
-z = [Q(:); V(:); A(:); Ac(:)]
-```
-
-- `Q`：`6 x N` 节点平台位姿 `[x;y;z;roll;pitch;yaw]`
-- `V`：`6 x N` 节点平台广义速度
-- `A`：`6 x N` 节点平台广义加速度
-- `Ac`：`6 x (N-1)` 每个区间中点平台广义加速度
-
-端点位姿和端点速度通过等式约束固定，端点加速度不固定。
-
-## Hermite-Simpson 公式
-
-区间中点状态为：
+当前默认间隙设置为：
 
 ```matlab
-qc = 0.5*(qk + qk1) + h/8*(vk - vk1)
-vc = 0.5*(vk + vk1) + h/8*(ak - ak1)
+scene.collision.safeDistance = 0.010;  % 10 mm
+scene.collision.finalGap = 0.005;      % 5 mm
+scene.collision.stage1ConstraintDistance = scene.collision.safeDistance;
+scene.collision.waypointGap = scene.collision.safeDistance;
 ```
 
-配点等式为：
+第一阶段有限圆柱体-有向长方体凸体分离约束使用 `safeDistance`。第二阶段从 10 mm 途径点沿长方体局部 x 轴送入到 5 mm 最终间隙，姿态保持与长方体一致。
+
+## 隐式 HS 决策变量
+
+默认链路使用隐式变量布局，首尾端点状态由 `scene` 固定，不进入决策变量：
 
 ```matlab
-qk1 - qk = h/6*(vk + 4*vc + vk1)
-vk1 - vk = h/6*(ak + 4*ac + ak1)
+z = [
+    Xinternal(:);
+    Anode(:);
+    Amid(:);
+    Fnode(:);
+    Fmid(:);
+    separator(:)
+]
 ```
 
-第一条表示位姿由速度积分得到，第二条表示速度由加速度积分得到。
+- `Xinternal`：不含首尾端点的节点状态 `X=[q;qd]`。
+- `Anode` / `Amid`：节点和中点平台广义加速度 `qdd`。
+- `Fnode` / `Fmid`：节点和中点六条支链轴向驱动力。
+- `separator`：第一阶段节点和中点的凸体分离证书变量 `[n;eta;zeta;rho]`。
 
-## 当前路径约束
+## 约束与目标函数
 
-节点和中点同时检查：
+NLP 等式约束包括 Hermite-Simpson 状态积分一致性、节点/中点隐式动力学平衡、途径点位姿约束、第二阶段送入直线/姿态/单向运动约束，以及第一阶段分离证书单位法向约束。
 
-- 支链长度：`0.40 m <= L <= 0.80 m`
-- 支链速度：`abs(Ld) <= ldotMax`
-- 支链加速度：`abs(Ldd) <= lddotMax`
-- 奇异性：`sigmaMin >= sigmaMinSafe`
-- 条件数：`condJ <= condJMax`
-- 完整逆动力学驱动力：`forceMin <= Fleg <= forceMax`
+NLP 不等式约束包括支链长度、速度、加速度硬约束，第一阶段分离证书安全间隙，以及第二阶段单向送入速度。驱动力仅保留硬上下界：
 
-当前不包含平台位姿边界、虎克铰摆角、功率约束、优化变量上下界和 Simscape 联合优化。
+```matlab
+model.actuator.forceMin = -2000 * ones(6, 1);
+model.actuator.forceMax =  2000 * ones(6, 1);
+```
+
+当前目标函数为五项加权和：
+
+```matlab
+J = 0.10 * J_nominalStage1 ...
+  + 0.10 * J_forceRate ...
+  + 0.40 * J_legAccel ...
+  + 0.40 * J_singularity ...
+  + 0.10 * J_power;
+```
+
+- `J_nominalStage1`：仅第一阶段，约束圆柱中心和姿态偏离初值标称轨迹。
+- `J_forceRate`：全阶段，惩罚相邻节点/中点驱动力变化率。
+- `J_legAccel`：全阶段，保留支链加速度平滑项。
+- `J_singularity`：全阶段，保留奇异性软惩罚。
+- `J_power`：全阶段，使用支链机械功率 `P_i=F_i*Ld_i` 的平方归一化代价，默认 `powerScale=1000 W`。
+
+已移除驱动力幅值平方代价和接近驱动力上限的软惩罚。summary 会输出五项加权代价与占比，同时保留 `max|F|` 和 `forcePassed` 作为硬约束诊断。
 
 ## 如何运行
 
@@ -65,30 +83,19 @@ run('opt_minimal/run_01_hs_dynamic_opt.m')
 结果保存到：
 
 ```text
-opt_minimal/results/hs_dynamic_result_yyyymmdd_HHMMSS.mat
+opt_minimal/results/
 ```
 
-动画保存到 `opt_minimal/results/`。
+主要输出文件包括：
 
-## 文件作用
+- `result_cylinder_box_two_phase_ipopt_ma27_yyyymmdd_HHMMSS.mat`
+- `summary_cylinder_box_two_phase_ipopt_ma27_yyyymmdd_HHMMSS.txt`
+- `console_cylinder_box_two_phase_ipopt_ma27_yyyymmdd_HHMMSS.txt`
+- 轨迹诊断 PNG 和动画 MP4
 
-- `run_01_hs_dynamic_opt.m`：HS 完整动力学主脚本。
-- `buildOptModelCustom.m`：默认自定义 Stewart 几何、动力学和约束参数。
-- `buildOptModelFromSimscape.m`：Simscape 参数参考入口，不作为默认模型。
-- `computeAnchorPoints66.m`：生成 6-6 平台铰点。
-- `packHSDecision.m` / `unpackHSDecision.m`：打包和解包 HS 决策变量。
-- `buildInitialGuessQuinticHS.m`：五次多项式初值。
-- `computeHSMidpoint.m`：HS 中点状态公式。
-- `evaluatePathConstraintsAtPoint.m`：单点路径约束和物理量计算。
-- `costHSDynamic.m`：Simpson 积分目标函数。
-- `nonlconHSDynamic.m`：HS 等式约束和路径约束。
-- `sgpIK.m`、`sgpJacobian.m`、`computeLegKinematics.m`：运动学计算。
-- `inverseDynamicsFullUCU.m`、`computePlatformWrenchFull.m`、`computeLegInertiaWrenchFull.m`：完整逆动力学近似。
-- `analyzeHSResult.m`：优化结果分析。
-- `plotOptResult.m`：中文结果图。
-- `animateStewartTrajectory.m`：三维 Stewart 动画。
-- `exportTrajectoryToSimscape.m`：导出节点参考轨迹。
+## 目录说明
 
-## 后续扩展
-
-可将 `N=21` 改为 25 或 30 增加离散精度；也可进一步提供解析梯度、稀疏雅可比或切换到更适合大规模直接配点的优化器。
+- 顶层 `.m` 文件：默认入口当前调用链所需的主文件。
+- `solver_comparison/`：历史求解器对比脚本目录，不属于默认入口。
+- `unused/`：默认入口不再调用的旧版、压缩版、预对准或对比实验文件。
+- `results/`：优化运行产生的 MAT、日志、图片和动画。

@@ -1,0 +1,72 @@
+IPOPT/MA27 vs fmincon-SQP comparison summary
+numIntervals: 40
+numZ: 1440
+numEq: 966
+numIneq: 5265
+
+=== IPOPT + MA27 ===
+initialValue: shared quintic implicit HS z0
+usesExactGradient: 1
+usesVariableScaling: 0
+status: Solve_Succeeded
+solveTime: 160.632992
+iterations: 118
+functionCount: 157
+objective total: 1.484606481369e+00
+objective force: 9.526634716088e-01
+objective legAccel: 5.319430097601e-01
+objective singularity: 0.000000000000e+00
+max equality residual: 4.407709752741e-08
+max inequality violation: 0.000000000000e+00
+min clearance: 1.535898384862e-02
+min sigmaMin: 8.556806828238e-05
+max condJ: 2.634612382647e+04
+max r_kin: 5.363854539835e+00
+max r_acc: 4.469878783196e+02
+max r_dyn_state: 2.700717268677e+02
+max r_dyn_geom: 5.969736005666e+02
+pathPassed: 0
+singularityPassed: 0
+dynamicsPassed: 0
+overallPassed: 0
+
+=== fmincon-SQP exactGradientScaled ===
+initialValue: shared quintic implicit HS z0
+usesExactGradient: 1
+usesVariableScaling: 1
+status: exitflag=0
+solveTime: 2517.254653
+iterations: 120
+functionCount: 2723
+objective total: 8.942328962155e-01
+objective force: 7.919154589023e-01
+objective legAccel: 1.023174373132e-01
+objective singularity: 0.000000000000e+00
+max equality residual: 3.435884565306e-03
+max inequality violation: 0.000000000000e+00
+min clearance: 1.141039812511e-02
+min sigmaMin: 3.213350231327e-01
+max condJ: 7.426431635465e+00
+max r_kin: 8.087192256127e-04
+max r_acc: 6.739322432922e-02
+max r_dyn_state: 2.838000557214e-02
+max r_dyn_geom: 9.979476246968e+00
+pathPassed: 1
+singularityPassed: 1
+dynamicsPassed: 0
+overallPassed: 0
+
+Table:
+                  names                  solveTime    iterations    functionCount    objectiveTotal    objectiveForce    objectiveLegAccel    objectiveSingularity      maxEq       maxIneq    minClearance     minSigma     maxCond    overallPassed
+    _________________________________    _________    __________    _____________    ______________    ______________    _________________    ____________________    __________    _______    ____________    __________    _______    _____________
+
+    "IPOPT + MA27"                        160.63         118             157             1.4846           0.95266             0.53194                  0              4.4077e-08       0         0.015359      8.5568e-05     26346         false    
+    "fmincon-SQP exactGradientScaled"     2517.3         120            2723            0.89423           0.79192             0.10232                  0               0.0034359       0          0.01141         0.32134    7.4264         false    
+
+
+
+plots:
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_objective_comparison_20260525_153342.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_iteration_history_20260525_153342.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_constraint_history_20260525_153342.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_time_iteration_comparison_20260525_153342.png

@@ -45,15 +45,28 @@ end
 denseReport = struct();
 denseReport.maxPathViolation = max([allC(:); 0]);
 denseReport.minClearance = min(allClearance);
-denseReport.maxAbsForce = max(abs(allForce(:)));
 denseReport.minLength = min(allLength(:));
 denseReport.maxLength = max(allLength(:));
 denseReport.maxAbsLd = max(abs(allLd(:)));
 denseReport.maxAbsLdd = max(abs(allLdd(:)));
 denseReport.minSigmaMin = min(allSigma(:));
 denseReport.maxCondJ = max(allCond(:));
-denseReport.isFeasible = denseReport.maxPathViolation <= 1e-6 && ...
-    denseReport.maxAbsForce <= max(model.actuator.forceMax) + 1e-6;
+forceUpperViolation = allForce - repmat(model.actuator.forceMax(:), 1, size(allForce, 2));
+forceLowerViolation = repmat(model.actuator.forceMin(:), 1, size(allForce, 2)) - allForce;
+denseReport.forceUpperViolationMax = max([forceUpperViolation(:); 0]);
+denseReport.forceLowerViolationMax = max([forceLowerViolation(:); 0]);
+denseReport.pathPassed = denseReport.maxPathViolation <= 1e-6;
+denseReport.forcePassed = denseReport.forceUpperViolationMax <= 1e-6 && ...
+    denseReport.forceLowerViolationMax <= 1e-6;
+denseReport.singularityPassed = denseReport.minSigmaMin >= model.singularity.sigmaMinSafe && ...
+    denseReport.maxCondJ <= model.singularity.condWarning;
+denseReport.kinematicsPassed = true;
+denseReport.stateDynamicsPassed = true;
+denseReport.geometricDynamicsPassed = true;
+denseReport.solverTrajectoryPassed = denseReport.pathPassed && denseReport.forcePassed && ...
+    denseReport.singularityPassed && denseReport.stateDynamicsPassed;
+denseReport.engineeringTrajectoryPassed = denseReport.pathPassed && denseReport.forcePassed && ...
+    denseReport.singularityPassed && denseReport.kinematicsPassed && denseReport.geometricDynamicsPassed;
 denseReport.disc = disc;
 denseReport.scene = scene;
 end

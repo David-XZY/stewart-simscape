@@ -18,7 +18,8 @@ function [xdot, aux] = stateDynamicsCompositeRigidBody(x, F, model)
 %   qdd = H\(Jv'F-Wbias)。
 %
 % 在优化链路中的作用：
-%   nonlconHSDynamic 在节点和中点调用本函数构造显式 HS 动力学约束。
+%   evaluatePathConstraintsAtPoint 在未显式给定 qdd 时调用本函数，用于数值诊断和
+%   与隐式动力学残差口径保持一致。
 
 validateattributes(x, {'double'}, {'real', 'finite', 'vector', 'numel', 12}, mfilename, 'x');
 validateattributes(F, {'double'}, {'real', 'finite', 'vector', 'numel', 6}, mfilename, 'F');

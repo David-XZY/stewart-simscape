@@ -25,7 +25,7 @@ function Jout = sgpJacobian(q, model)
 %
 % 与 Stewart 平台轨迹优化的关系：
 %   Ldot = Jq*qdot 用于支链速度约束；机构奇异性按任务要求基于空间
-%   雅可比 Jv 的归一化矩阵 Jbar 计算，避免 RPY 映射影响奇异性硬约束。
+%   雅可比 Jv 的归一化矩阵 Jbar 计算，避免 RPY 映射影响奇异性诊断和目标惩罚项。
 
 validateattributes(q, {'double'}, {'real', 'finite', 'vector', 'numel', 6}, mfilename, 'q');
 q = q(:);

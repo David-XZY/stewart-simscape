@@ -1,0 +1,100 @@
+Implicit HS shared NLP solver comparison summary
+numIntervals: 40
+numZ: 1440
+numEq: 966
+numIneq: 5265
+solverCount: 3
+
+=== IPOPT + MA27 ===
+initialValue: shared quintic implicit HS z0
+usesExactGradient: 1
+usesVariableScaling: 0
+status: Solve_Succeeded
+solveTime: 83.574064
+iterations: 56
+functionCount: 60
+objective total: 8.560754450754e-01
+objective force: 6.031402542789e-01
+objective legAccel: 1.417460819468e-01
+objective singularity: 1.111891088498e-01
+max equality residual: 3.985657848204e-08
+max inequality violation: 0.000000000000e+00
+min clearance: 9.734615512745e-03
+min sigmaMin: 3.213350231327e-01
+max condJ: 7.426431635465e+00
+max r_kin: 1.187911742074e-04
+max r_acc: 9.899264517257e-03
+max r_dyn_state: 6.817228139985e-02
+max r_dyn_geom: 1.387679946703e+00
+pathPassed: 0
+singularityPassed: 1
+dynamicsPassed: 0
+overallPassed: 0
+
+=== fmincon-SQP exactGradientScaled ===
+initialValue: shared quintic implicit HS z0
+usesExactGradient: 1
+usesVariableScaling: 1
+status: exitflag=0
+solveTime: 349.692384
+iterations: 20
+functionCount: 313
+objective total: 1.033469007492e+00
+objective force: 8.146698195299e-01
+objective legAccel: 1.030126045440e-01
+objective singularity: 1.157865834178e-01
+max equality residual: 4.429768725686e-03
+max inequality violation: 0.000000000000e+00
+min clearance: 1.106481013226e-02
+min sigmaMin: 3.213350231327e-01
+max condJ: 7.426431635465e+00
+max r_kin: 7.483845425852e-04
+max r_acc: 6.236528821151e-02
+max r_dyn_state: 2.863455271464e-02
+max r_dyn_geom: 9.307965808288e+00
+pathPassed: 1
+singularityPassed: 1
+dynamicsPassed: 0
+overallPassed: 0
+
+=== fmincon-interior-point exactGradientExactHessianScaled ===
+initialValue: shared quintic implicit HS z0
+usesExactGradient: 1
+usesVariableScaling: 1
+status: exitflag=0
+solveTime: 249.572253
+iterations: 40
+functionCount: 240
+objective total: 4.484017381605e+00
+objective force: 2.869164773193e+00
+objective legAccel: 8.520209441578e-01
+objective singularity: 7.628316642545e-01
+max equality residual: 2.240692769929e-02
+max inequality violation: 0.000000000000e+00
+min clearance: 1.535898384862e-02
+min sigmaMin: 7.699780099614e-02
+max condJ: 3.081033565178e+01
+max r_kin: 1.243148277915e-02
+max r_acc: 1.035956898262e+00
+max r_dyn_state: 1.408315447423e+00
+max r_dyn_geom: 9.997322165605e+01
+pathPassed: 1
+singularityPassed: 0
+dynamicsPassed: 0
+overallPassed: 0
+
+Table:
+                             names                              solveTime    iterations    functionCount    objectiveTotal    objectiveForce    objectiveLegAccel    objectiveSingularity      maxEq       maxIneq    minClearance    minSigma    maxCond    overallPassed
+    ________________________________________________________    _________    __________    _____________    ______________    ______________    _________________    ____________________    __________    _______    ____________    ________    _______    _____________
+
+    "IPOPT + MA27"                                               83.574          56              60            0.85608           0.60314             0.14175               0.11119           3.9857e-08       0        0.0097346       0.32134    7.4264         false    
+    "fmincon-SQP exactGradientScaled"                            349.69          20             313             1.0335           0.81467             0.10301               0.11579            0.0044298       0         0.011065       0.32134    7.4264         false    
+    "fmincon-interior-point exactGradientExactHessianScaled"     249.57          40             240              4.484            2.8692             0.85202               0.76283             0.022407       0         0.015359      0.076998     30.81         false    
+
+
+
+plots:
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_objective_comparison_20260525_174749.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_iteration_history_20260525_174749.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_constraint_history_20260525_174749.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\solver_time_iteration_comparison_20260525_174749.png

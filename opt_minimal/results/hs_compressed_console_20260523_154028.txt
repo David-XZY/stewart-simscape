@@ -1136,3 +1136,4 @@ compressed HS 等式数量：240，最大绝对残差：8.652e-13
 结果 MAT 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\hs_compressed_result_20260523_154028.mat
 诊断文本已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\hs_compressed_summary_20260523_154028.txt
 MATLAB 命令行日志已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\hs_compressed_console_20260523_154028.txt
+run_01_hs_dynamic_opt

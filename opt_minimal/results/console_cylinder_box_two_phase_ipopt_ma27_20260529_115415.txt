@@ -1,0 +1,110 @@
+
+===== 圆柱体-长方体两阶段 CasADi/IPOPT/MA27 隐式 HS 默认入口 =====
+入口：run_01_hs_dynamic_opt.m
+qWaypoint = [-0.57862443 -0.29219104  1.57370980  0.08726646  0.26179939  0.17453293]^T
+qGoal     = [ 0.04103414 -0.18337102  1.41028867  0.08726646  0.26179939  0.17453293]^T
+safeDistance=0.010000 m, finalGap=0.005000 m
+objective weights W1: nominalStage1=0.01, forceRate=0.10, legAccel=0.40, singularity=0.40
+objective scales: L_dev=0.100000 m, theta_dev=0.174533 rad, forceRateScale=1000.000000 N/s, legAccelScale=1.200000 m/s^2
+T1=5.000 s, T2=2.500 s, N1=40, N2=20, h=0.125000 s
+CasADi root: D:\NPU\Matlab_code\stewart-simscape\lib\casadi-windows-matlabR2016a-v3.5.5
+CoinHSL bin: D:\NPU\Matlab_code\stewart-simscape\lib\CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5\bin
+CasADi version: 3.5.5
+MA27 precheck: opts.ipopt.linear_solver = ma27
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+MA27 precheck success: x=1, return_status=Solve_Succeeded, time=0.082 s
+目标规模：numIntervals=60, numel(z)=2808, numel(gEq)=1738, numel(cIneq)=5207
+
+===== 构建 CasADi MX 两阶段隐式 NLP =====
+NLP 构建完成：numel(z)=2808, numel(gEq)=1738, numel(cIneq)=5207, buildTime=54.134 s
+
+===== 初值诊断 =====
+J0=6.60635547e-01, evalTime=0.020 s, maxEq=3.446e-03, maxIneqViolation=9.837e-08
+maxEq=3.446e-03, maxIneqViolation=9.837e-08
+minClearance=0.005000 m, finalGap=0.005000 m, safeDistance=0.010000 m
+stage1 minClearance=0.010000 m, insertion target gap=0.005000 m
+stage2 max |y_B|=1.110e-16, max |z_B-zGoal|=4.441e-16, max |rpy-rpyBox|=2.776e-17, min xdot_B=0.000e+00
+stage2 continuous gap min=0.005000 m, fixed-normal gap error=5.083e-16
+leg length=[1.078416, 1.950125], max|Ld|=0.332315, max|Ldd|=0.436201
+max|F|=1086.545098 N, forcePassed=1, force violation upper/lower=[0.000e+00, 0.000e+00]
+sigmaMin min=0.320385 (safe 0.100000), condJ max=7.450031 (warning 20.000000)
+waypoint q error=0.000e+00, goal q error=0.000e+00
+
+===== 初值目标函数分解 =====
+objectiveTotal=6.60635547e-01
+nominalStage1=1.21488240e-16 (0.00%)
+forceRate=2.91116989e-01 (44.07%)
+legAccel=2.92223071e-01 (44.23%)
+singularity=7.72954877e-02 (11.70%)
+
+===== 开始 IPOPT/MA27 求解 =====
+Total number of variables............................:     2808
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      726
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:     1738
+Total number of inequality constraints...............:     5207
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     5207
+
+
+Number of Iterations....: 51
+
+                                   (scaled)                 (unscaled)
+Objective...............:  4.7163198578687382e-001   4.7163198578687382e-001
+Dual infeasibility......:  2.8058408101821510e-008   2.8058408101821510e-008
+Constraint violation....:  3.7605505796812725e-008   5.8712105399649779e-008
+Complementarity.........:  9.1256422594626726e-008   9.1256422594626726e-008
+Overall NLP error.......:  9.1256422594626726e-008   9.1256422594626726e-008
+
+
+Number of objective function evaluations             = 67
+Number of objective gradient evaluations             = 52
+Number of equality constraint evaluations            = 67
+Number of inequality constraint evaluations          = 67
+Number of equality constraint Jacobian evaluations   = 52
+Number of inequality constraint Jacobian evaluations = 52
+Number of Lagrangian Hessian evaluations             = 51
+Total CPU secs in IPOPT (w/o function evaluations)   =      1.398
+Total CPU secs in NLP function evaluations           =     84.316
+
+EXIT: Optimal Solution Found.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 455.00ms (  6.79ms) 458.34ms (  6.84ms)        67
+       nlp_g  | 655.00ms (  9.78ms) 653.22ms (  9.75ms)        67
+  nlp_grad_f  | 980.00ms ( 18.49ms) 978.48ms ( 18.46ms)        53
+  nlp_hess_l  |  67.68 s (  1.33 s)  67.68 s (  1.33 s)        51
+   nlp_jac_g  |  14.69 s (277.09ms)  14.69 s (277.13ms)        53
+       total  |  85.72 s ( 85.72 s)  85.72 s ( 85.72 s)         1
+
+===== IPOPT/MA27 求解摘要 =====
+return_status=Solve_Succeeded, iterations=51, solveTime=85.724 s, objective=4.71631986e-01
+max equality residual=5.871e-08, max inequality violation=1.017e-08
+maxEq=5.871e-08, maxIneqViolation=1.017e-08
+minClearance=0.005000 m, finalGap=0.005000 m, safeDistance=0.010000 m
+stage1 minClearance=0.010000 m, insertion target gap=0.005000 m
+stage2 max |y_B|=1.493e-08, max |z_B-zGoal|=2.834e-08, max |rpy-rpyBox|=8.040e-08, min xdot_B=0.000e+00
+stage2 continuous gap min=0.005000 m, fixed-normal gap error=5.083e-16
+leg length=[1.078416, 1.954945], max|Ld|=0.274200, max|Ldd|=0.334739
+max|F|=1078.287734 N, forcePassed=1, force violation upper/lower=[0.000e+00, 0.000e+00]
+sigmaMin min=0.319256 (safe 0.100000), condJ max=7.477929 (warning 20.000000)
+waypoint q error=6.201e-09, goal q error=0.000e+00
+
+===== 优化后目标函数分解 =====
+objectiveTotal=4.71631986e-01
+nominalStage1=5.25704268e-03 (1.11%)
+forceRate=2.06259050e-01 (43.73%)
+legAccel=1.82420898e-01 (38.68%)
+singularity=7.76949949e-02 (16.47%)
+动画已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\cylinder_box_two_phase_cylinder_box_two_phase_ipopt_ma27_20260529_115415.mp4
+结果 MAT 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_cylinder_box_two_phase_ipopt_ma27_20260529_115415.mat
+summary 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\summary_cylinder_box_two_phase_ipopt_ma27_20260529_115415.txt
+MATLAB console log 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\console_cylinder_box_two_phase_ipopt_ma27_20260529_115415.txt
+run_01_hs_dynamic_opt

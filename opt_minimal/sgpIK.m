@@ -6,7 +6,7 @@ function kin = sgpIK(q, model)
 %
 % 输入参数：
 %   q     [6x1] - [x; y; z; roll; pitch; yaw]，表示 {B} 相对 {A} 的位姿。
-%   model struct - buildOptModelFromSimscape 输出的几何和约束参数。
+%   model struct - buildOptModelCustom 输出或等价结构中的几何和约束参数。
 %
 % 输出参数：
 %   kin.L  [6x1] - 六条支链长度。

@@ -1,0 +1,187 @@
+
+===== IPOPT/MA27 vs fmincon 多求解器同一 NLP 对比 =====
+numIntervals=40
+CasADi root: D:\NPU\Matlab_code\stewart-simscape\lib\casadi-windows-matlabR2016a-v3.5.5
+CoinHSL bin: D:\NPU\Matlab_code\stewart-simscape\lib\CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5\bin
+CasADi version: 3.5.5
+MA27 precheck: opts.ipopt.linear_solver = ma27
+MA27 precheck success: x=1, return_status=Solve_Succeeded, time=0.020 s
+NLP size: z=1440 eq=966 ineq=5265
+
+===== Solver A: IPOPT + MA27 =====
+This is Ipopt version 3.12.3, running with linear solver ma27.
+
+Number of nonzeros in equality constraint Jacobian...:    16869
+Number of nonzeros in inequality constraint Jacobian.:    99018
+Number of nonzeros in Lagrangian Hessian.............:    36081
+
+Total number of variables............................:     1440
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      486
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:      966
+Total number of inequality constraints...............:     5265
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     5265
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 1.1100831e+000 2.16e-002 1.00e+000  -1.0 0.00e+000    -  0.00e+000 0.00e+000   0
+   1 1.0969025e+000 5.31e-002 7.61e+000  -1.0 4.84e+001    -  7.02e-001 2.70e-001f  1
+   2 1.2604169e+000 2.84e+000 1.06e+002  -1.0 4.80e+001    -  9.00e-002 1.00e+000f  1
+   3 1.2772361e+000 1.93e+000 6.55e+001  -1.0 6.16e+001    -  1.56e-001 3.22e-001f  1
+   4 1.4408540e+000 1.03e+000 4.93e+002  -1.0 3.53e+001    -  4.91e-002 1.00e+000f  1
+   5 1.6054869e+000 4.18e+000 7.91e+001  -1.0 3.86e+001    -  6.22e-001 1.00e+000f  1
+   6 1.8861713e+000 7.08e-001 4.54e+000  -1.0 3.93e+001    -  9.58e-001 1.00e+000f  1
+   7 2.0897472e+000 2.39e+001 3.83e+001  -1.0 2.80e+002    -  3.69e-001 1.00e+000f  1
+   8 2.7538810e+000 8.05e+001 2.04e+001  -1.0 9.32e+002    -  4.64e-001 4.66e-001f  1
+   9 2.7654365e+000 3.61e+001 3.13e+000  -1.0 4.36e+001  -4.0 1.00e+000 1.00e+000h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 2.6095066e+000 6.02e+000 8.45e-001  -1.0 4.09e+001  -4.5 1.00e+000 1.00e+000h  1
+  11 2.7981205e+000 1.97e+001 1.09e-001  -1.0 1.16e+002  -5.0 1.00e+000 1.00e+000f  1
+  12 3.4908518e+000 7.60e+001 8.23e-001  -1.0 2.86e+002  -5.4 1.00e+000 1.00e+000f  1
+  13 3.6932225e+000 2.68e+001 3.54e-001  -1.0 1.09e+002  -5.0 1.00e+000 1.00e+000h  1
+  14 4.7063050e+000 1.12e+002 1.07e+000  -1.0 3.19e+002  -5.5 1.00e+000 1.00e+000f  1
+  15 4.5082274e+000 3.17e+001 1.25e+000  -1.0 8.98e+001  -5.1 1.00e+000 1.00e+000h  1
+  16 5.1198755e+000 4.14e+001 6.57e-001  -1.0 2.59e+002  -5.5 1.00e+000 1.00e+000h  1
+  17 5.2221173e+000 4.67e+000 3.37e-001  -1.0 1.14e+002  -5.1 1.00e+000 1.00e+000h  1
+  18 5.7232223e+000 3.93e+001 1.96e-001  -1.0 3.12e+002  -5.6 1.00e+000 1.00e+000h  1
+  19 6.1890704e+000 1.13e+002 8.27e-001  -1.0 1.08e+005  -6.1 8.57e-003 3.95e-003f  2
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20 6.5596857e+000 6.36e+001 1.09e+000  -1.0 3.01e+002  -5.6 1.00e+000 1.00e+000h  1
+  21 7.0241935e+000 8.48e+001 5.04e-001  -1.0 5.08e+002  -6.1 1.00e+000 1.00e+000h  1
+  22 8.0622521e+000 1.44e+002 1.22e+000  -1.0 7.41e+002  -6.6 1.00e+000 1.00e+000h  1
+  23 9.2181854e+000 1.47e+002 2.62e+000  -1.0 1.19e+003    -  6.03e-001 1.00e+000h  1
+  24 8.4080708e+000 3.65e+001 1.22e+000  -1.0 5.70e+002  -7.1 1.00e+000 1.00e+000h  1
+  25 8.2445417e+000 1.51e+000 1.88e-001  -1.0 1.71e+002    -  1.00e+000 1.00e+000h  1
+  26 7.3773585e+000 5.37e+000 9.70e-001  -1.7 2.54e+002    -  9.35e-001 1.00e+000h  1
+  27 6.4848274e+000 8.49e+000 1.78e-001  -1.7 2.97e+002    -  1.00e+000 1.00e+000h  1
+  28 6.2959124e+000 6.07e-001 1.79e-002  -1.7 5.72e+001    -  1.00e+000 1.00e+000h  1
+  29 6.2861642e+000 7.96e-003 2.33e-004  -1.7 8.01e+000    -  1.00e+000 1.00e+000h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30 5.3041605e+000 2.01e+001 1.65e+000  -3.8 3.99e+002    -  5.55e-001 1.00e+000f  1
+  31 4.2330464e+000 4.28e+001 8.64e-001  -3.8 4.19e+002    -  4.76e-001 1.00e+000h  1
+  32 3.3480454e+000 5.98e+001 6.13e-001  -3.8 5.94e+002    -  2.91e-001 1.00e+000h  1
+  33 2.6172329e+000 1.07e+002 3.93e-001  -3.8 8.71e+002    -  3.59e-001 1.00e+000h  1
+  34 1.7151231e+000 2.98e+002 2.79e-001  -3.8 1.64e+003    -  2.90e-001 7.13e-001H  1
+  35 1.7560857e+000 2.44e+002 3.17e-001  -3.8 3.09e+003    -  1.32e-002 1.83e-001H  1
+  36 1.5992282e+000 3.84e+001 2.62e-001  -3.8 4.47e+002  -6.6 4.83e-002 1.00e+000h  1
+  37 1.4394390e+000 9.71e+000 1.01e-001  -3.8 7.35e+001  -6.2 6.13e-001 1.00e+000h  1
+  38 1.4038711e+000 3.53e+001 4.93e-002  -3.8 9.07e+001  -6.7 8.14e-001 1.00e+000h  1
+  39 1.1474383e+000 6.10e+001 6.45e-002  -3.8 2.43e+003    -  1.16e-001 1.82e-001h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40 1.1014899e+000 5.32e+001 8.57e-002  -3.8 3.68e+002    -  1.00e+000 1.27e-001h  1
+  41 9.3065287e-001 2.15e+001 5.36e-001  -3.8 3.41e+002    -  1.04e-001 1.00e+000h  1
+  42 9.1267783e-001 9.46e+000 2.30e-001  -3.8 1.14e+002    -  4.36e-001 5.60e-001h  1
+  43 9.0818108e-001 3.24e-001 4.19e-001  -3.8 6.23e+001    -  2.80e-001 1.00e+000h  1
+  44 9.1079733e-001 3.19e-002 1.42e-002  -3.8 2.19e+001    -  1.00e+000 1.00e+000h  1
+  45 9.1041813e-001 1.89e-003 4.47e-004  -3.8 6.88e+000    -  1.00e+000 1.00e+000h  1
+  46 8.8988949e-001 8.46e-001 5.88e-002  -5.7 2.32e+002    -  5.62e-001 2.74e-001h  1
+  47 8.7434403e-001 1.34e+000 5.93e-002  -5.7 1.89e+002    -  3.54e-001 3.20e-001h  1
+  48 8.6025630e-001 1.34e+000 1.96e-001  -5.7 1.06e+002    -  3.16e-001 5.87e-001h  1
+  49 8.5867144e-001 9.73e-001 1.62e-001  -5.7 3.76e+001    -  6.88e-001 2.89e-001h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50 8.5712232e-001 5.45e-001 1.09e-001  -5.7 2.83e+001    -  1.00e+000 4.73e-001h  1
+  51 8.5612745e-001 4.46e-002 3.02e-002  -5.7 1.60e+001    -  9.10e-001 1.00e+000h  1
+  52 8.5610013e-001 5.58e-004 4.68e-006  -5.7 3.15e+000    -  1.00e+000 1.00e+000h  1
+  53 8.5609680e-001 1.02e-005 3.65e-007  -5.7 4.46e-001    -  1.00e+000 1.00e+000h  1
+  54 8.5607742e-001 7.22e-004 1.42e-002  -7.0 3.43e+000    -  1.00e+000 8.17e-001h  1
+  55 8.5607546e-001 5.19e-005 1.88e-006  -7.0 9.17e-001    -  1.00e+000 1.00e+000h  1
+  56 8.5607545e-001 3.99e-008 1.25e-009  -7.0 2.51e-002    -  1.00e+000 1.00e+000h  1
+
+Number of Iterations....: 56
+
+                                   (scaled)                 (unscaled)
+Objective...............:  8.5607544507544198e-001   8.5607544507544198e-001
+Dual infeasibility......:  1.2546428479476290e-009   1.2546428479476290e-009
+Constraint violation....:  2.0768159932534523e-008   3.9856578482044824e-008
+Complementarity.........:  9.1429822083400222e-008   9.1429822083400222e-008
+Overall NLP error.......:  9.1429822083400222e-008   9.1429822083400222e-008
+
+
+Number of objective function evaluations             = 60
+Number of objective gradient evaluations             = 57
+Number of equality constraint evaluations            = 61
+Number of inequality constraint evaluations          = 61
+Number of equality constraint Jacobian evaluations   = 57
+Number of inequality constraint Jacobian evaluations = 57
+Number of Lagrangian Hessian evaluations             = 56
+Total CPU secs in IPOPT (w/o function evaluations)   =      1.728
+Total CPU secs in NLP function evaluations           =     84.351
+
+EXIT: Optimal Solution Found.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 281.00ms (  4.68ms) 280.56ms (  4.68ms)        60
+       nlp_g  | 710.00ms ( 11.64ms) 712.16ms ( 11.67ms)        61
+  nlp_grad_f  | 669.00ms ( 11.53ms) 676.20ms ( 11.66ms)        58
+  nlp_hess_l  |  63.00 s (  1.12 s)  63.00 s (  1.12 s)        56
+   nlp_jac_g  |  20.12 s (346.86ms)  20.11 s (346.71ms)        58
+       total  |  86.08 s ( 86.08 s)  86.08 s ( 86.08 s)         1
+
+===== Solver B: fmincon + SQP + CasADi gradients + scaling =====
+ Iter  Func-count            Fval   Feasibility   Step Length       Norm of   First-order  
+                                                                       step    optimality
+    0           1    1.110083e+00     2.165e-02     1.000e+00     0.000e+00     6.329e-02  
+    1           5    1.104980e+00     1.085e-02     7.000e-01     2.299e-01     8.440e-01  
+    2           9    1.081696e+00     5.774e-03     7.000e-01     1.760e-01     2.669e-01  
+    3          18    1.067532e+00     5.395e-03     1.176e-01     1.174e-01     2.780e-01  
+    4          28    1.056896e+00     5.028e-03     8.235e-02     9.209e-02     3.125e-01  
+    5          40    1.051365e+00     4.831e-03     4.035e-02     4.872e-02     3.329e-01  
+    6          54    1.048257e+00     4.736e-03     1.977e-02     2.771e-02     3.433e-01  
+    7          69    1.045840e+00     4.671e-03     1.384e-02     2.172e-02     3.510e-01  
+    8          85    1.043975e+00     4.626e-03     9.689e-03     1.694e-02     3.574e-01  
+    9         102    1.042583e+00     4.595e-03     6.782e-03     1.277e-02     3.622e-01  
+   10         119    1.041109e+00     4.564e-03     6.782e-03     1.367e-02     3.674e-01  
+   11         137    1.040026e+00     4.543e-03     4.748e-03     1.015e-02     3.714e-01  
+   12         155    1.038904e+00     4.522e-03     4.748e-03     1.061e-02     3.755e-01  
+   13         174    1.038096e+00     4.507e-03     3.323e-03     7.719e-03     3.786e-01  
+   14         193    1.037266e+00     4.492e-03     3.323e-03     7.996e-03     3.817e-01  
+   15         212    1.036417e+00     4.478e-03     3.323e-03     8.251e-03     3.849e-01  
+   16         232    1.035811e+00     4.467e-03     2.326e-03     5.938e-03     3.872e-01  
+   17         252    1.035193e+00     4.457e-03     2.326e-03     6.095e-03     3.895e-01  
+   18         272    1.034565e+00     4.447e-03     2.326e-03     6.240e-03     3.918e-01  
+   19         292    1.033929e+00     4.437e-03     2.326e-03     6.372e-03     3.941e-01  
+   20         313    1.033469e+00     4.430e-03     1.628e-03     4.630e-03     3.959e-01  
+
+<a href = "matlab: helpview('optim','solver_stopped_premature','CSHelpWindow');">求解器过早停止</a>。
+
+fmincon 已停止，因为它超过迭代限制，
+<a href = "matlab: helpview('optim','max_iter','CSHelpWindow');">options.MaxIterations</a> = 2.000000e+01。
+
+
+===== Solver C: fmincon + interior-point + CasADi gradients/Hessian + scaling =====
+                                            First-order      Norm of
+ Iter F-count            f(x)  Feasibility   optimality         step
+    0       1    1.110083e+00    2.165e-02    2.243e-01
+    1       5    1.375979e+00    4.601e+00    1.359e-01    4.135e+00
+    2       7    1.750933e+00    2.208e+00    7.830e-02    2.720e+00
+    3       9    3.090551e+00    9.217e+00    1.779e-01    4.919e+00
+    4      13    4.332894e+00    2.373e+00    1.911e-01    3.360e+00
+    5      17    5.240063e+00    1.664e+00    2.088e-01    2.625e+00
+    6      21    5.827015e+00    3.191e+00    2.068e-01    2.883e+00
+    7      25    6.013602e+00    1.680e+00    2.138e-01    1.842e+00
+    8      29    6.179369e+00    2.841e+00    3.408e-01    1.887e+00
+    9      31    6.337047e+00    1.316e+00    6.079e-01    1.704e+00
+   10      35    6.473688e+00    2.226e+00    8.551e-01    1.580e+00
+   11      37    6.577228e+00    1.866e+00    1.004e+00    1.601e+00
+   12      41    6.654040e+00    1.250e+00    8.204e-01    1.683e+00
+   13      45    6.721292e+00    8.992e-01    3.206e-01    1.842e+00
+   14      49    6.799713e+00    7.563e-01    1.671e-01    2.037e+00
+   15      53    6.881778e+00    8.472e-01    1.540e-01    2.195e+00
+   16      57    6.962875e+00    1.204e+00    1.405e-01    2.296e+00
+   17      59    7.059485e+00    1.663e+00    1.370e-01    2.359e+00
+   18      61    7.222395e+00    2.059e+00    1.333e-01    2.408e+00
+   19      63    7.569078e+00    2.319e+00    1.277e-01    2.445e+00
+   20      65    8.191445e+00    2.465e+00    1.187e-01    2.464e+00
+
+<a href = "matlab: helpview('optim','solver_stopped_premature','CSHelpWindow');">求解器过早停止</a>。
+
+fmincon 已停止，因为它超过迭代限制，
+<a href = "matlab: helpview('optim','max_iter','CSHelpWindow');">options.MaxIterations</a> = 2.000000e+01。
+
+
+===== 对比结果已保存 =====
+MAT: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\compare_ipopt_sqp_20260525_162739.mat
+summary: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\summary_compare_ipopt_sqp_20260525_162739.txt
+console: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\console_compare_ipopt_sqp_20260525_162739.txt
+run_02_compare_ipopt_sqp

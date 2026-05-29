@@ -1,0 +1,50 @@
+CasADi implicit HS IPOPT MA27 trajectory optimization summary
+MAT: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_casadi_implicit_ipopt_ma27_20260524_192503.mat
+CasADi version: 3.5.5
+linear_solver: ma27
+MA27 precheck status: Solve_Succeeded, x=1
+decision variables: 2160
+equalities: 1446
+inequalities: 7865
+initial objective: 1.110082845598e+00
+initial eval time: 0.021480 s
+initial dense max path violation: 2.165387370235e-02
+return_status: Solve_Succeeded
+iterations: 65
+solve time: 158.442173 s
+objective: 8.562587266355e-01
+objective force: 6.039815324572e-01
+objective legAccel: 1.410881696287e-01
+objective singularity: 1.111890245496e-01
+objective total breakdown: 8.562587266355e-01
+weightSingularity: 1.000000000000e+00
+singularityEpsilon: 2.500000000000e-05
+singularityScale: 1.666666666667e-03
+max equality residual: 4.142707439314e-07
+max inequality violation: 0.000000000000e+00
+solverSuccess: 1
+pathPassed: 0
+singularityPassed: 1
+dynamicsPassed: 0
+overallPassed: 0
+dense samples: 1201
+force interpolation: quadratic Lagrange through Fnode(k), Fmid(k), Fnode(k+1)
+min clearance: 9.881695882537e-03
+min sigmaMin: 3.213350231327e-01 at t=5.000000
+max condJ: 7.426431635465e+00 at t=5.000000
+max r_kin: 4.082182836060e-05 at t=4.933333
+max r_acc: 5.102728545050e-03 at t=5.000000
+max r_dyn_state: 2.159449211803e-02 at t=4.983333
+max r_dyn_geom: 7.121630120844e-01 at t=5.000000
+max endpoint vdot residual: 0.000000000000e+00
+max midpoint state residual: 2.220446049250e-16
+max midpoint accel-state residual: 1.498801083244e-15
+animation: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\stewart_prealign_5s_casadi_implicit_ipopt_ma27_20260524_192503.mp4
+plots:
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\pose_velocity_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_length_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_speed_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\leg_acceleration_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\actuator_force_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\singularity_collision_casadi_implicit_ipopt_ma27_20260524_192503.png
+  D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\path_3d_casadi_implicit_ipopt_ma27_20260524_192503.png
