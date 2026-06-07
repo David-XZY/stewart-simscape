@@ -12,7 +12,6 @@ end
 nominalStage1 = initialGuess.nominalStage1;
 
 nodeNominal = zeros(1, disc.numNodes);
-nodePower = zeros(1, disc.numNodes);
 nodeAccel = zeros(1, disc.numNodes);
 nodeSing = zeros(1, disc.numNodes);
 for nodeIndex = 1:disc.numNodes
@@ -21,14 +20,11 @@ for nodeIndex = 1:disc.numNodes
             Xnode(1:6, nodeIndex), nominalStage1.centerNode(:, nodeIndex), ...
             nominalStage1.rotationNode(:, :, nodeIndex), model, scene);
     end
-    nodePower(nodeIndex) = sum(((Fnode(:, nodeIndex) .* nodePoints{nodeIndex}.Ld) ./ ...
-        model.objective.powerScale).^2);
     nodeAccel(nodeIndex) = sum((nodePoints{nodeIndex}.Ldd ./ model.objective.legAccelScale).^2);
     nodeSing(nodeIndex) = singularityPenaltyNumeric(Xnode(1:6, nodeIndex), model);
 end
 
 midNominal = zeros(1, disc.numMidpoints);
-midPower = zeros(1, disc.numMidpoints);
 midAccel = zeros(1, disc.numMidpoints);
 midSing = zeros(1, disc.numMidpoints);
 for midIndex = 1:disc.numMidpoints
@@ -37,15 +33,12 @@ for midIndex = 1:disc.numMidpoints
             Xmid(1:6, midIndex), nominalStage1.centerMid(:, midIndex), ...
             nominalStage1.rotationMid(:, :, midIndex), model, scene);
     end
-    midPower(midIndex) = sum(((Fmid(:, midIndex) .* midPoints{midIndex}.Ld) ./ ...
-        model.objective.powerScale).^2);
     midAccel(midIndex) = sum((midPoints{midIndex}.Ldd ./ model.objective.legAccelScale).^2);
     midSing(midIndex) = singularityPenaltyNumeric(Xmid(1:6, midIndex), model);
 end
 
 rawNominal = 0;
 rawForceRate = 0;
-rawPower = 0;
 rawLegAccel = 0;
 rawSingularity = 0;
 for intervalIndex = 1:disc.numIntervals
@@ -57,35 +50,28 @@ for intervalIndex = 1:disc.numIntervals
         (nodeSing(intervalIndex) + 4*midSing(intervalIndex) + nodeSing(intervalIndex+1));
     rawForceRate = rawForceRate + forceRateCostNumeric( ...
         Fnode(:, intervalIndex), Fmid(:, intervalIndex), Fnode(:, intervalIndex+1), disc.h, model);
-    rawPower = rawPower + disc.h/6 * ...
-        (nodePower(intervalIndex) + 4*midPower(intervalIndex) + nodePower(intervalIndex+1));
 end
 
 breakdown = struct();
 breakdown.nominalStage1 = model.objective.weightNominalStage1 * rawNominal;
 breakdown.forceRate = model.objective.weightForceRate * rawForceRate;
-breakdown.power = model.objective.weightPower * rawPower;
 breakdown.legAccel = model.objective.weightLegAccel * rawLegAccel;
 breakdown.singularity = model.objective.weightSingularity * rawSingularity;
-breakdown.total = breakdown.nominalStage1 + breakdown.forceRate + breakdown.power + ...
-    breakdown.legAccel + breakdown.singularity;
+breakdown.total = breakdown.nominalStage1 + breakdown.forceRate + breakdown.legAccel + breakdown.singularity;
 breakdown.rawNominalStage1 = rawNominal;
 breakdown.rawForceRate = rawForceRate;
-breakdown.rawPower = rawPower;
 breakdown.rawLegAccel = rawLegAccel;
 breakdown.rawSingularity = rawSingularity;
 breakdown.percent = percentageBreakdown(breakdown);
 breakdown.weights = struct( ...
     'nominalStage1', model.objective.weightNominalStage1, ...
     'forceRate', model.objective.weightForceRate, ...
-    'power', model.objective.weightPower, ...
     'legAccel', model.objective.weightLegAccel, ...
     'singularity', model.objective.weightSingularity);
 breakdown.scales = struct( ...
     'positionDeviation', model.objective.positionDeviationScale, ...
     'attitudeDeviation', model.objective.attitudeDeviationScale, ...
     'forceRate', model.objective.forceRateScale, ...
-    'power', model.objective.powerScale, ...
     'legAccel', model.objective.legAccelScale);
 breakdown.singularityEpsilon = model.objective.singularityEpsilon;
 breakdown.singularityScale = model.objective.singularityScale;
@@ -139,7 +125,6 @@ denominator = max(abs(breakdown.total), eps);
 percent = struct();
 percent.nominalStage1 = 100 * breakdown.nominalStage1 / denominator;
 percent.forceRate = 100 * breakdown.forceRate / denominator;
-percent.power = 100 * breakdown.power / denominator;
 percent.legAccel = 100 * breakdown.legAccel / denominator;
 percent.singularity = 100 * breakdown.singularity / denominator;
 end

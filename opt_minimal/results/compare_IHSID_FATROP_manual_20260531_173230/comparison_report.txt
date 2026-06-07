@@ -1,0 +1,29 @@
+﻿IHSID-MANUAL-FATROP 20x10 fixed check report
+
+Methods:
+- IHSID-STANDARD-IPOPT: solverStatus=Solved_To_Acceptable_Level, solverSuccess=1, engineeringPassed=1, objective=0.275360058177391, solveTime_s=12.3022806, iter_count=185
+- IHSID-MANUAL-IPOPT: solverStatus=Solved_To_Acceptable_Level, solverSuccess=1, engineeringPassed=1, objective=0.277783416056183, solveTime_s=33.012357, iter_count=161
+- IHSID-MANUAL-FATROP: solverStatus=FATROP_LIMITED_MEMORY_UNAVAILABLE, solverSuccess=0, engineeringPassed=0, fatropComparisonValid=0
+
+Manual structure check:
+- numZ=3640, numEq=2080, numIneq=3847
+- maxManualGapResidualAtX0=0
+
+Manual equivalence check:
+- objectiveStdAtX0=0.314057033183583
+- objectiveManualAtX0=0.314057033183583
+- absObjectiveDiffAtX0=0
+
+FATROP option/probe conclusion:
+- The current CasADi FATROP MATLAB interface rejects hessian_approximation=limited-memory.
+- The FATROP formal solve was not started, so there is no valid speed or engineering comparison against IPOPT.
+- failureReason=当前 CasADi FATROP 接口不接受 hessian_approximation=limited-memory，按要求停止 FATROP 对比。
+
+Answers:
+1. manual IHSID is equivalent to standard IHSID at the checked initial point: objective diff is zero, equality/inequality diagnostics match, and manual gap is zero.
+2. IHSID-MANUAL-IPOPT reproduces the standard IPOPT workflow at the engineering acceptance level; both solver and dense post-check pass.
+3. FATROP limited-memory is not effective because the required hessian_approximation option is rejected by the interface.
+4. Degenerate Jacobian was not assessed in a formal FATROP run because the run was stopped before solve.
+5. IHSID-MANUAL-FATROP did not pass engineering validation because it was not allowed to solve under invalid Hessian settings.
+6. FATROP vs manual IPOPT comparison is not fair or valid in this run.
+7. The blocking cause is FATROP option/interface support for Hessian approximation, not physics, initialization, or engineering post-check failure.

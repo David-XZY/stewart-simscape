@@ -24,9 +24,8 @@ function [Xnode, Anode, Amid, Fnode, Fmid, Xinternal, separator] = unpackHSDecis
 
 expectedLength = 12*(disc.numNodes-2) + 6*disc.numNodes + 6*disc.numMidpoints + ...
     6*disc.numNodes + 6*disc.numMidpoints;
-if isfield(disc, 'numStage1CollisionPoints')
-    expectedLength = expectedLength + 8*disc.numStage1CollisionPoints;
-end
+numCollisionCertificates = getNumCollisionCertificates(disc);
+expectedLength = expectedLength + 8*numCollisionCertificates;
 validateattributes(z, {'double'}, {'real', 'finite', 'vector', 'numel', expectedLength}, mfilename, 'z');
 z = z(:);
 
@@ -51,9 +50,9 @@ midForceCount = 6 * disc.numMidpoints;
 Fmid = reshape(z(cursor + (1:midForceCount)), 6, disc.numMidpoints);
 cursor = cursor + midForceCount;
 
-if isfield(disc, 'numStage1CollisionPoints') && disc.numStage1CollisionPoints > 0
-    separatorCount = 8 * disc.numStage1CollisionPoints;
-    separator = reshape(z(cursor + (1:separatorCount)), 8, disc.numStage1CollisionPoints);
+if numCollisionCertificates > 0
+    separatorCount = 8 * numCollisionCertificates;
+    separator = reshape(z(cursor + (1:separatorCount)), 8, numCollisionCertificates);
 else
     separator = zeros(8, 0);
 end
@@ -61,4 +60,14 @@ end
 xStart = [scene.q0; scene.qd0];
 xEnd = [scene.qGoal; scene.qdGoal];
 Xnode = [xStart, Xinternal, xEnd];
+end
+
+function n = getNumCollisionCertificates(disc)
+if isfield(disc, 'numCollisionCertificates')
+    n = disc.numCollisionCertificates;
+elseif isfield(disc, 'numStage1CollisionPoints')
+    n = disc.numStage1CollisionPoints;
+else
+    n = 0;
+end
 end

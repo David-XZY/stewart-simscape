@@ -1,0 +1,233 @@
+
+===== 圆柱体-长方体两阶段 CasADi/IPOPT/MA27 隐式 HS 默认入口 =====
+入口：run_01_hs_dynamic_opt.m
+qWaypoint = [-0.08829634 -0.36828646  1.30248767  0.08726646  0.34906585  0.78539816]^T
+qGoal     = [ 0.02746608 -0.27261490  1.42087269  0.08726646  0.34906585  0.78539816]^T
+safeDistance=0.015000 m, finalGap=0.005000 m
+box rpy(deg)=[5.000 20.000 45.000], hood obstacles=roof,leftSkirt,rightSkirt
+objective weights W1: nominalStage1=0.10, forceRate=0.08, legAccel=0.30, singularity=0.40, power=1.00
+objective scales: L_dev=0.100000 m, theta_dev=0.174533 rad, forceRateScale=1000.000000 N/s, powerScale=1000.000000 W, legAccelScale=1.200000 m/s^2
+T1=5.000 s, T2=2.500 s, N1=40, N2=20, h=0.125000 s
+CasADi root: D:\NPU\Matlab_code\stewart-simscape\lib\casadi-windows-matlabR2016a-v3.5.5
+CoinHSL bin: D:\NPU\Matlab_code\stewart-simscape\lib\CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5\bin
+CasADi version: 3.5.5
+MA27 precheck: opts.ipopt.linear_solver = ma27
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+MA27 precheck success: x=1, return_status=Solve_Succeeded, time=0.112 s
+目标规模：numIntervals=60, numel(z)=4744, numel(gEq)=1980, numel(cIneq)=7627
+collision certificates=323, separator variables=2584
+
+===== 构建 CasADi MX 两阶段隐式 NLP =====
+NLP 构建完成：numel(z)=4744, numel(gEq)=1980, numel(cIneq)=7627, buildTime=50.298 s
+
+===== 初值诊断 =====
+J0=3.14187589e-01, evalTime=0.016 s, maxEq=7.107e-04, maxIneqViolation=5.389e-01
+maxEq=7.107e-04, maxIneqViolation=5.389e-01
+minClearance=0.005000 m, finalGap=0.005000 m, safeDistance=0.015000 m
+obstacle minClearance roof/left/right=[0.005000 0.035050 0.035008] m, active=roof at t=7.500000
+stage1 minClearance=0.035008 m, insertion target gap=0.005000 m
+stage2 side minClearance left/right=[0.040000 0.040000] m
+stage2 max |y_B|=8.327e-17, max |z_B-zGoal|=4.996e-16, max |rpy-rpyBox|=5.551e-17, min xdot_B=0.000e+00
+stage2 continuous gap min=0.005000 m, fixed-normal gap error=2.220e-16
+leg length=[1.078416, 1.905829], max|Ld|=0.299482, max|Ldd|=0.182931
+max|F|=1087.974212 N, forcePassed=1, force violation upper/lower=[0.000e+00, 0.000e+00]
+sigmaMin min=0.284680 (safe 0.100000), condJ max=8.327253 (warning 20.000000)
+waypoint q error=0.000e+00, goal q error=0.000e+00
+
+===== 初值目标函数分解 =====
+objectiveTotal=3.14187589e-01
+nominalStage1=9.71905919e-16 (0.00%)
+forceRate=9.21097957e-02 (29.32%)
+power=9.17635820e-02 (29.21%)
+legAccel=4.97823559e-02 (15.84%)
+singularity=8.05318559e-02 (25.63%)
+
+===== 开始 IPOPT/MA27 求解 =====
+Total number of variables............................:     4744
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      726
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:     1980
+Total number of inequality constraints...............:     7627
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     7627
+
+
+Number of Iterations....: 27
+
+                                   (scaled)                 (unscaled)
+Objective...............:  2.7407324209968426e-001   2.7407324209968426e-001
+Dual infeasibility......:  4.9674782984926447e-009   4.9674782984926447e-009
+Constraint violation....:  4.6451746760212131e-007   4.6451746760212131e-007
+Complementarity.........:  9.0960313604870819e-008   9.0960313604870819e-008
+Overall NLP error.......:  4.6451746760212131e-007   4.6451746760212131e-007
+
+
+Number of objective function evaluations             = 28
+Number of objective gradient evaluations             = 28
+Number of equality constraint evaluations            = 28
+Number of inequality constraint evaluations          = 28
+Number of equality constraint Jacobian evaluations   = 28
+Number of inequality constraint Jacobian evaluations = 28
+Number of Lagrangian Hessian evaluations             = 27
+Total CPU secs in IPOPT (w/o function evaluations)   =      0.756
+Total CPU secs in NLP function evaluations           =     28.418
+
+EXIT: Optimal Solution Found.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 140.00ms (  5.00ms) 141.36ms (  5.05ms)        28
+       nlp_g  | 259.00ms (  9.25ms) 258.13ms (  9.22ms)        28
+  nlp_grad_f  | 344.00ms ( 11.86ms) 344.99ms ( 11.90ms)        29
+  nlp_hess_l  |  22.35 s (827.78ms)  22.35 s (827.86ms)        27
+   nlp_jac_g  |   5.54 s (190.97ms)   5.54 s (190.93ms)        29
+       total  |  29.18 s ( 29.18 s)  29.18 s ( 29.18 s)         1
+
+===== IPOPT/MA27 求解摘要 =====
+return_status=Solve_Succeeded, iterations=27, solveTime=29.194 s, objective=2.74073242e-01
+max equality residual=4.645e-07, max inequality violation=-0.000e+00
+maxEq=4.645e-07, maxIneqViolation=-0.000e+00
+minClearance=0.005000 m, finalGap=0.005000 m, safeDistance=0.015000 m
+obstacle minClearance roof/left/right=[0.005000 0.035063 0.035006] m, active=roof at t=7.500000
+stage1 minClearance=0.035006 m, insertion target gap=0.005000 m
+stage2 side minClearance left/right=[0.040000 0.040000] m
+stage2 max |y_B|=9.593e-09, max |z_B-zGoal|=1.610e-08, max |rpy-rpyBox|=1.081e-08, min xdot_B=0.000e+00
+stage2 continuous gap min=0.005000 m, fixed-normal gap error=2.220e-16
+leg length=[1.078416, 1.905829], max|Ld|=0.274976, max|Ldd|=0.225461
+max|F|=1106.266464 N, forcePassed=1, force violation upper/lower=[0.000e+00, 0.000e+00]
+sigmaMin min=0.284540 (safe 0.100000), condJ max=8.331062 (warning 20.000000)
+waypoint q error=7.352e-13, goal q error=0.000e+00
+
+===== 优化后目标函数分解 =====
+objectiveTotal=2.74073242e-01
+nominalStage1=1.06340952e-02 (3.88%)
+forceRate=7.91712418e-02 (28.89%)
+power=7.31386508e-02 (26.69%)
+legAccel=3.11925010e-02 (11.38%)
+singularity=7.99367532e-02 (29.17%)
+动画已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\cylinder_box_two_phase_cylinder_box_two_phase_ipopt_ma27_20260530_092813.mp4
+结果 MAT 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_cylinder_box_two_phase_ipopt_ma27_20260530_092813.mat
+summary 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\summary_cylinder_box_two_phase_ipopt_ma27_20260530_092813.txt
+MATLAB console log 已保存：D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\console_cylinder_box_two_phase_ipopt_ma27_20260530_092813.txt
+run_03_compare_hs_vs_dms_ipopt
+CasADi root: D:\NPU\Matlab_code\stewart-simscape\lib\casadi-windows-matlabR2016a-v3.5.5
+CoinHSL bin: D:\NPU\Matlab_code\stewart-simscape\lib\CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5\bin
+CasADi version: 3.5.5
+MA27 precheck: opts.ipopt.linear_solver = ma27
+MA27 precheck success: x=1, return_status=Solve_Succeeded, time=0.015 s
+
+===== 离散比较 HSI N1=20 N2=10 =====
+Total number of variables............................:     2384
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      366
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:     1000
+Total number of inequality constraints...............:     3847
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     3847
+
+
+Number of Iterations....: 27
+
+                                   (scaled)                 (unscaled)
+Objective...............:  2.7448514383131545e-001   2.7448514383131545e-001
+Dual infeasibility......:  1.5459124605432528e-010   1.5459124605432528e-010
+Constraint violation....:  2.7513114897459445e-008   2.7513114897459445e-008
+Complementarity.........:  9.0954942317118214e-008   9.0954942317118214e-008
+Overall NLP error.......:  9.0954942317118214e-008   9.0954942317118214e-008
+
+
+Number of objective function evaluations             = 28
+Number of objective gradient evaluations             = 28
+Number of equality constraint evaluations            = 28
+Number of inequality constraint evaluations          = 28
+Number of equality constraint Jacobian evaluations   = 28
+Number of inequality constraint Jacobian evaluations = 28
+Number of Lagrangian Hessian evaluations             = 27
+Total CPU secs in IPOPT (w/o function evaluations)   =      0.390
+Total CPU secs in NLP function evaluations           =     15.433
+
+EXIT: Optimal Solution Found.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  |  90.00ms (  3.21ms)  91.24ms (  3.26ms)        28
+       nlp_g  | 156.00ms (  5.57ms) 155.87ms (  5.57ms)        28
+  nlp_grad_f  | 219.00ms (  7.55ms) 218.89ms (  7.55ms)        29
+  nlp_hess_l  |  11.92 s (441.30ms)  11.91 s (441.25ms)        27
+   nlp_jac_g  |   3.17 s (109.17ms)   3.17 s (109.17ms)        29
+       total  |  15.82 s ( 15.82 s)  15.83 s ( 15.83 s)         1
+
+===== 离散比较 HS-E N1=20 N2=10 =====
+Total number of variables............................:     2018
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      366
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:      634
+Total number of inequality constraints...............:     3847
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     3847
+
+
+Number of Iterations....: 28
+
+                                   (scaled)                 (unscaled)
+Objective...............:  2.7448514314718708e-001   2.7448514314718708e-001
+Dual infeasibility......:  1.2104248159339193e-010   1.2104248159339193e-010
+Constraint violation....:  1.8552555491879730e-008   1.8552555491879730e-008
+Complementarity.........:  9.0960870682082857e-008   9.0960870682082857e-008
+Overall NLP error.......:  9.0960870682082857e-008   9.0960870682082857e-008
+
+
+Number of objective function evaluations             = 29
+Number of objective gradient evaluations             = 29
+Number of equality constraint evaluations            = 29
+Number of inequality constraint evaluations          = 29
+Number of equality constraint Jacobian evaluations   = 29
+Number of inequality constraint Jacobian evaluations = 29
+Number of Lagrangian Hessian evaluations             = 28
+Total CPU secs in IPOPT (w/o function evaluations)   =      0.764
+Total CPU secs in NLP function evaluations           =    137.051
+
+EXIT: Optimal Solution Found.
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 153.00ms (  5.28ms) 151.59ms (  5.23ms)        29
+       nlp_g  | 213.00ms (  7.34ms) 214.87ms (  7.41ms)        29
+  nlp_grad_f  | 502.00ms ( 16.73ms) 503.02ms ( 16.77ms)        30
+  nlp_hess_l  | 125.24 s (  4.47 s) 125.24 s (  4.47 s)        28
+   nlp_jac_g  |  11.41 s (380.27ms)  11.41 s (380.31ms)        30
+       total  | 137.82 s (137.82 s) 137.82 s (137.82 s)         1
+
+===== 离散比较 DMS-E N1=20 N2=10 =====
+Total number of variables............................:     2018
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      366
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:      634
+Total number of inequality constraints...............:     3847
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:     3847
+
+Exception of type: IpoptException in file "Unknown File" at line -1:
+ Exception message: Unknown Exception caught in Ipopt
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 149.00ms (  6.48ms) 148.62ms (  6.46ms)        23
+       nlp_g  | 244.00ms ( 10.61ms) 240.37ms ( 10.45ms)        23
+  nlp_grad_f  | 487.00ms ( 20.29ms) 487.61ms ( 20.32ms)        24
+  nlp_hess_l  | 143.49 s (  6.24 s) 143.49 s (  6.24 s)        23
+   nlp_jac_g  |  24.84 s (  1.04 s)  24.84 s (  1.04 s)        24
+       total  | 169.52 s (169.52 s) 169.52 s (169.52 s)         1
+{操作在以下过程中被用户终止 <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('run_03_compare_hs_vs_dms_ipopt>savePartialComparison', 'D:\NPU\Matlab_code\stewart-simscape\opt_minimal\run_03_compare_hs_vs_dms_ipopt.m', 107)" style="font-weight:bold">run_03_compare_hs_vs_dms_ipopt>savePartialComparison</a> (<a href="matlab: opentoline('D:\NPU\Matlab_code\stewart-simscape\opt_minimal\run_03_compare_hs_vs_dms_ipopt.m',107,0)">第 107 行</a>)
+
+
+位置 <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('run_03_compare_hs_vs_dms_ipopt', 'D:\NPU\Matlab_code\stewart-simscape\opt_minimal\run_03_compare_hs_vs_dms_ipopt.m', 51)" style="font-weight:bold">run_03_compare_hs_vs_dms_ipopt</a> (<a href="matlab: opentoline('D:\NPU\Matlab_code\stewart-simscape\opt_minimal\run_03_compare_hs_vs_dms_ipopt.m',51,0)">第 51 行</a>)
+        savePartialComparison(resultDir, model, scene, trials, rows, gridList);
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+} 

@@ -23,6 +23,12 @@ function [z0, initialData] = buildInitialGuessTwoPhaseHSImplicit(model, scene, d
 if ~isfield(disc, 'numStage1CollisionPoints')
     disc.numStage1CollisionPoints = (disc.numIntervalsApproach + 1) + disc.numIntervalsApproach;
 end
+if ~isfield(disc, 'numAllCollisionPoints')
+    disc.numAllCollisionPoints = disc.numNodes + disc.numMidpoints;
+end
+if ~isfield(disc, 'numCollisionCertificates')
+    disc.numCollisionCertificates = disc.numStage1CollisionPoints + 2*disc.numAllCollisionPoints;
+end
 
 Qnode = zeros(6, disc.numNodes);
 Vnode = zeros(6, disc.numNodes);
@@ -93,23 +99,39 @@ centerS = q(1:3) + R * scene.objectCylinder.center_P;
 end
 
 function separator = buildSeparatorInitialGuess(Qnode, Qmid, scene, disc)
-separator = zeros(8, disc.numStage1CollisionPoints);
-normal = scene.box.R_S * [0; 0; 1];
+separator = zeros(8, disc.numCollisionCertificates);
+normalRoof = scene.box.R_S * [0; 0; 1];
+normalLeft = scene.box.R_S * [0; 1; 0];
+normalRight = scene.box.R_S * [0; -1; 0];
 cursor = 0;
 for nodeIndex = 1:(disc.numIntervalsApproach + 1)
     cursor = cursor + 1;
-    separator(:, cursor) = separatorAtPose(Qnode(:, nodeIndex), normal, scene);
+    separator(:, cursor) = separatorAtPose(Qnode(:, nodeIndex), normalRoof, scene.hood.roof, scene);
 end
 for midIndex = 1:disc.numIntervalsApproach
     cursor = cursor + 1;
-    separator(:, cursor) = separatorAtPose(Qmid(:, midIndex), normal, scene);
+    separator(:, cursor) = separatorAtPose(Qmid(:, midIndex), normalRoof, scene.hood.roof, scene);
+end
+for nodeIndex = 1:disc.numNodes
+    allPointIndex = nodeIndex;
+    separator(:, disc.numStage1CollisionPoints + allPointIndex) = ...
+        separatorAtPose(Qnode(:, nodeIndex), normalLeft, scene.hood.leftSkirt, scene);
+    separator(:, disc.numStage1CollisionPoints + disc.numAllCollisionPoints + allPointIndex) = ...
+        separatorAtPose(Qnode(:, nodeIndex), normalRight, scene.hood.rightSkirt, scene);
+end
+for midIndex = 1:disc.numMidpoints
+    allPointIndex = disc.numNodes + midIndex;
+    separator(:, disc.numStage1CollisionPoints + allPointIndex) = ...
+        separatorAtPose(Qmid(:, midIndex), normalLeft, scene.hood.leftSkirt, scene);
+    separator(:, disc.numStage1CollisionPoints + disc.numAllCollisionPoints + allPointIndex) = ...
+        separatorAtPose(Qmid(:, midIndex), normalRight, scene.hood.rightSkirt, scene);
 end
 end
 
-function value = separatorAtPose(q, normal, scene)
+function value = separatorAtPose(q, normal, obstacle, scene)
 R = rpy2rotmZYX(q(4:6));
 axisWorld = R * scene.objectCylinder.axis_P;
-eta = abs(scene.box.R_S.' * normal);
+eta = abs(obstacle.R_S.' * normal);
 zeta = abs(normal.' * axisWorld);
 rho = sqrt(max(0, 1 - (normal.' * axisWorld)^2) + scene.collision.smoothingEps^2);
 value = [normal; eta; zeta; rho];

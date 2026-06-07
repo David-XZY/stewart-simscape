@@ -20,13 +20,16 @@ function report = validateInsertionPhaseContinuousClearance(scene)
 n2 = scene.box.R_S * [0; 0; 1];
 sValues = linspace(scene.phase.pCylinderWaypoint_B(1), scene.phase.pCylinderGoal_B(1), 101);
 gaps = zeros(size(sValues));
+sideDistances = zeros(2, numel(sValues));
 lateral = zeros(size(sValues));
 height = zeros(size(sValues));
 axisErrors = zeros(size(sValues));
 for i = 1:numel(sValues)
     q = insertionPoseFromScalar(sValues(i), 0, 0, scene);
     distanceInfo = evaluateCylinderBoxDistanceNumeric(q, scene);
-    gaps(i) = supportGapFixedNormal(q, n2, scene);
+    roofInfo = evaluateCylinderBoxClearance(q, scene);
+    gaps(i) = roofInfo.distance;
+    sideDistances(:, i) = distanceInfo.distances(2:3).';
     lateral(i) = abs(distanceInfo.pCylinder_B(2));
     height(i) = abs(distanceInfo.pCylinder_B(3) - insertionLineHeightNumeric(distanceInfo.pCylinder_B(1), scene));
     axisErrors(i) = norm(distanceInfo.axis_B - [1; 0; 0]);
@@ -36,12 +39,15 @@ report = struct();
 report.fixedNormal = n2;
 report.analyticGap = scene.collision.finalGap;
 report.sampleMinGap = min(gaps);
-report.sampleMaxGapError = max(abs(gaps - linspace(scene.collision.waypointGap, scene.collision.finalGap, numel(gaps))));
+report.sampleFinalGap = gaps(end);
+report.sampleMaxGapError = max(abs(gaps - linspace(scene.collision.stage2RoofStartGap, scene.collision.finalGap, numel(gaps))));
+report.sideMinGap = min(sideDistances, [], 2).';
 report.maxLateralError = max(lateral);
 report.maxHeightError = max(height);
 report.maxAxisError = max(axisErrors);
 report.passed = report.sampleMinGap >= scene.collision.finalGap - 1e-10 && report.maxLateralError <= 1e-12 && ...
-    report.maxHeightError <= 1e-12 && report.maxAxisError <= 1e-12;
+    report.maxHeightError <= 1e-12 && report.maxAxisError <= 1e-12 && ...
+    all(report.sideMinGap >= scene.collision.safeDistance - 1e-10);
 end
 
 function q = insertionPoseFromScalar(s, sd, sdd, scene) %#ok<INUSD>
@@ -64,7 +70,8 @@ function gap = supportGapFixedNormal(q, n, scene)
 R = rpy2rotmZYX(q(4:6));
 cylinderCenter = q(1:3) + R * scene.objectCylinder.center_P;
 cylinderAxis = R * scene.objectCylinder.axis_P;
-boxMin = n.' * scene.box.center_S - sum(scene.box.halfSize(:) .* abs(scene.box.R_S.' * n));
+obstacle = scene.hood.roof;
+boxMin = n.' * obstacle.center_S - sum(obstacle.halfSize(:) .* abs(obstacle.R_S.' * n));
 axial = 0.5 * scene.objectCylinder.length * abs(n.' * cylinderAxis);
 radial = scene.objectCylinder.radius * sqrt(max(0, 1 - (n.' * cylinderAxis)^2));
 cylinderMax = n.' * cylinderCenter + axial + radial;

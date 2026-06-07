@@ -42,12 +42,14 @@ fprintf('qWaypoint = [% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qWaypoint
 fprintf('qGoal     = [% .8f % .8f % .8f % .8f % .8f % .8f]^T\n', scene.qGoal);
 fprintf('safeDistance=%.6f m, finalGap=%.6f m\n', ...
     scene.collision.safeDistance, scene.collision.finalGap);
-fprintf('objective weights W1: nominalStage1=%.2f, forceRate=%.2f, legAccel=%.2f, singularity=%.2f, power=%.2f\n', ...
+fprintf('box rpy(deg)=[%.3f %.3f %.3f], hood obstacles=%s\n', ...
+    rad2deg(scene.box.rpy), strjoin({scene.hood.obstacles.name}, ','));
+fprintf('objective weights W1: nominalStage1=%.2f, forceRate=%.2f, legAccel=%.2f, singularity=%.2f\n', ...
     model.objective.weightNominalStage1, model.objective.weightForceRate, ...
-    model.objective.weightLegAccel, model.objective.weightSingularity, model.objective.weightPower);
-fprintf('objective scales: L_dev=%.6f m, theta_dev=%.6f rad, forceRateScale=%.6f N/s, powerScale=%.6f W, legAccelScale=%.6f m/s^2\n', ...
+    model.objective.weightLegAccel, model.objective.weightSingularity);
+fprintf('objective scales: L_dev=%.6f m, theta_dev=%.6f rad, forceRateScale=%.6f N/s, legAccelScale=%.6f m/s^2\n', ...
     model.objective.positionDeviationScale, model.objective.attitudeDeviationScale, ...
-    model.objective.forceRateScale, model.objective.powerScale, model.objective.legAccelScale);
+    model.objective.forceRateScale, model.objective.legAccelScale);
 fprintf('T1=%.3f s, T2=%.3f s, N1=%d, N2=%d, h=%.6f s\n', ...
     disc.durationApproach, disc.durationInsertion, disc.numIntervalsApproach, ...
     disc.numIntervalsInsertion, disc.h);
@@ -57,6 +59,8 @@ ma27Info = setupCasadiIpoptMa27(projectRoot);
 expectedSizes = computeExpectedSizes(disc);
 fprintf('目标规模：numIntervals=%d, numel(z)=%d, numel(gEq)=%d, numel(cIneq)=%d\n', ...
     disc.numIntervals, expectedSizes.numZ, expectedSizes.numEq, expectedSizes.numIneq);
+fprintf('collision certificates=%d, separator variables=%d\n', ...
+    disc.numCollisionCertificates, 8*disc.numCollisionCertificates);
 
 [z0, initialGuess] = buildInitialGuessTwoPhaseHSImplicit(model, scene, disc);
 if numel(z0) ~= expectedSizes.numZ
@@ -157,17 +161,19 @@ disc.waypointNodeIndex = disc.numIntervalsApproach + 1;
 disc.stage2NodeIndices = disc.waypointNodeIndex:disc.numNodes;
 disc.stage2MidIndices = (disc.numIntervalsApproach + 1):disc.numIntervals;
 disc.numStage1CollisionPoints = (disc.numIntervalsApproach + 1) + disc.numIntervalsApproach;
+disc.numAllCollisionPoints = disc.numNodes + disc.numMidpoints;
+disc.numCollisionCertificates = disc.numStage1CollisionPoints + 2*disc.numAllCollisionPoints;
 end
 
 function sizes = computeExpectedSizes(disc)
 % computeExpectedSizes - 根据两阶段区间数计算隐式 HS 变量和约束规模
 sizes = struct();
 sizes.numZ = 12*(disc.numNodes - 2) + 6*disc.numNodes + 6*disc.numMidpoints + ...
-    6*disc.numNodes + 6*disc.numMidpoints + 8*disc.numStage1CollisionPoints;
+    6*disc.numNodes + 6*disc.numMidpoints + 8*disc.numCollisionCertificates;
 sizes.numEq = 12*disc.numIntervals + 6*(disc.numNodes + disc.numMidpoints) + 6 + ...
-    5*(disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + disc.numStage1CollisionPoints;
+    5*(disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + disc.numCollisionCertificates;
 sizes.numIneq = 36*(disc.numNodes + disc.numMidpoints) + ...
-    (disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + 10*disc.numStage1CollisionPoints;
+    (disc.numIntervalsInsertion + 1 + disc.numIntervalsInsertion) + 10*disc.numCollisionCertificates;
 end
 
 function traj = rebuildImplicitTrajectory(z, model, scene, disc)
@@ -200,12 +206,14 @@ traj.Ldd = collectPointField(data.nodePoint, 'Ldd');
 traj.sigmaMin = collectPointScalar(data.nodePoint, 'sigmaMin');
 traj.condJ = collectPointScalar(data.nodePoint, 'condJ');
 traj.minClearance = collectPointScalar(data.nodePoint, 'minClearance');
+traj.collisionDistances = collectPointField(data.nodePoint, 'collisionDistances');
 traj.Lmid = collectPointField(data.midPoint, 'L');
 traj.LdMid = collectPointField(data.midPoint, 'Ld');
 traj.LddMid = collectPointField(data.midPoint, 'Ldd');
 traj.sigmaMinMid = collectPointScalar(data.midPoint, 'sigmaMin');
 traj.condJMid = collectPointScalar(data.midPoint, 'condJ');
 traj.minClearanceMid = collectPointScalar(data.midPoint, 'minClearance');
+traj.collisionDistancesMid = collectPointField(data.midPoint, 'collisionDistances');
 end
 
 function values = collectPointField(points, fieldName)
@@ -246,7 +254,10 @@ result.err.hsEqualityMax = max(abs(ceq(:)));
 result.constraint.maxPathViolation = max([c(:); 0]);
 result.constraint.denseMaxPathViolation = denseReport.maxPathViolation;
 result.constraint.minClearance = denseReport.minClearance;
+result.constraint.minObstacleClearance = denseReport.minObstacleClearance;
+result.constraint.minClearanceObstacleName = denseReport.minClearanceObstacleName;
 result.constraint.finalGap = denseReport.finalGap;
+result.constraint.stage2SideMinClearance = denseReport.stage2SideMinClearance;
 result.constraint.minSigmaMin = denseReport.minSigmaMin;
 result.constraint.maxCondJ = denseReport.maxCondJ;
 result.constraint.forceUpperViolationMax = denseReport.forceUpperViolationMax;
@@ -275,8 +286,12 @@ function printTrajectorySummary(traj, denseReport, c, ceq, model, scene)
 fprintf('maxEq=%.3e, maxIneqViolation=%.3e\n', max(abs(ceq(:))), max([c(:); 0]));
 fprintf('minClearance=%.6f m, finalGap=%.6f m, safeDistance=%.6f m\n', ...
     denseReport.minClearance, denseReport.finalGap, scene.collision.safeDistance);
+fprintf('obstacle minClearance roof/left/right=[%.6f %.6f %.6f] m, active=%s at t=%.6f\n', ...
+    denseReport.minObstacleClearance, denseReport.minClearanceObstacleName, denseReport.minClearanceTime);
 fprintf('stage1 minClearance=%.6f m, insertion target gap=%.6f m\n', ...
     denseReport.minStage1Clearance, scene.collision.finalGap);
+fprintf('stage2 side minClearance left/right=[%.6f %.6f] m\n', ...
+    denseReport.stage2SideMinClearance);
 fprintf('stage2 max |y_B|=%.3e, max |z_B-zGoal|=%.3e, max |rpy-rpyBox|=%.3e, min xdot_B=%.3e\n', ...
     denseReport.stage2MaxLateralError, denseReport.stage2MaxHeightError, ...
     denseReport.stage2MaxAttitudeError, denseReport.stage2MinInsertionSpeed);
@@ -304,8 +319,6 @@ fprintf('nominalStage1=%.8e (%.2f%%)\n', ...
     breakdown.nominalStage1, breakdown.percent.nominalStage1);
 fprintf('forceRate=%.8e (%.2f%%)\n', ...
     breakdown.forceRate, breakdown.percent.forceRate);
-fprintf('power=%.8e (%.2f%%)\n', ...
-    breakdown.power, breakdown.percent.power);
 fprintf('legAccel=%.8e (%.2f%%)\n', ...
     breakdown.legAccel, breakdown.percent.legAccel);
 fprintf('singularity=%.8e (%.2f%%)\n', ...
@@ -327,12 +340,10 @@ fprintf(fid, 'objective: %.12e\n', solverResult.fval);
 fprintf(fid, 'objectiveTotalBreakdown: %.12e\n', objectiveBreakdown.total);
 fprintf(fid, 'objectiveNominalStage1: %.12e\n', objectiveBreakdown.nominalStage1);
 fprintf(fid, 'objectiveForceRate: %.12e\n', objectiveBreakdown.forceRate);
-fprintf(fid, 'objectivePower: %.12e\n', objectiveBreakdown.power);
 fprintf(fid, 'objectiveLegAccel: %.12e\n', objectiveBreakdown.legAccel);
 fprintf(fid, 'objectiveSingularity: %.12e\n', objectiveBreakdown.singularity);
 fprintf(fid, 'objectiveNominalStage1Percent: %.6f\n', objectiveBreakdown.percent.nominalStage1);
 fprintf(fid, 'objectiveForceRatePercent: %.6f\n', objectiveBreakdown.percent.forceRate);
-fprintf(fid, 'objectivePowerPercent: %.6f\n', objectiveBreakdown.percent.power);
 fprintf(fid, 'objectiveLegAccelPercent: %.6f\n', objectiveBreakdown.percent.legAccel);
 fprintf(fid, 'objectiveSingularityPercent: %.6f\n', objectiveBreakdown.percent.singularity);
 fprintf(fid, 'initialObjectiveNominalStage1: %.12e\n', initialObjectiveBreakdown.nominalStage1);
@@ -340,13 +351,14 @@ fprintf(fid, 'weightNominalStage1: %.6f\n', model.objective.weightNominalStage1)
 fprintf(fid, 'weightForceRate: %.6f\n', model.objective.weightForceRate);
 fprintf(fid, 'weightLegAccel: %.6f\n', model.objective.weightLegAccel);
 fprintf(fid, 'weightSingularity: %.6f\n', model.objective.weightSingularity);
-fprintf(fid, 'weightPower: %.6f\n', model.objective.weightPower);
 fprintf(fid, 'positionDeviationScale: %.12e\n', model.objective.positionDeviationScale);
 fprintf(fid, 'attitudeDeviationScale: %.12e\n', model.objective.attitudeDeviationScale);
 fprintf(fid, 'forceRateScale: %.12e\n', model.objective.forceRateScale);
-fprintf(fid, 'powerScale: %.12e\n', model.objective.powerScale);
 fprintf(fid, 'safeDistance: %.12e\n', scene.collision.safeDistance);
 fprintf(fid, 'finalGapTarget: %.12e\n', scene.collision.finalGap);
+fprintf(fid, 'stage1ConstraintDistance: %.12e\n', scene.collision.stage1ConstraintDistance);
+fprintf(fid, 'numCollisionCertificates: %d\n', disc.numCollisionCertificates);
+fprintf(fid, 'separatorVariables: %d\n', 8*disc.numCollisionCertificates);
 fprintf(fid, 'maxEqResidual: %.12e\n', solverResult.maxEqResidual);
 fprintf(fid, 'maxIneqViolation: %.12e\n', solverResult.maxIneqViolation);
 fprintf(fid, 'initialJ: %.12e\n', J0);
@@ -358,8 +370,12 @@ fprintf(fid, 'T1: %.6f\nT2: %.6f\nN1: %d\nN2: %d\n', ...
 fprintf(fid, 'qWaypoint: %s\n', mat2str(scene.qWaypoint, 10));
 fprintf(fid, 'qGoal: %s\n', mat2str(scene.qGoal, 10));
 fprintf(fid, 'minClearance: %.12e\n', denseReport.minClearance);
+fprintf(fid, 'minObstacleClearanceRoofLeftRight: %s\n', mat2str(denseReport.minObstacleClearance, 12));
+fprintf(fid, 'minClearanceObstacleName: %s\n', denseReport.minClearanceObstacleName);
 fprintf(fid, 'minStage1Clearance: %.12e\n', denseReport.minStage1Clearance);
+fprintf(fid, 'minStage1ObstacleClearanceRoofLeftRight: %s\n', mat2str(denseReport.minStage1ObstacleClearance, 12));
 fprintf(fid, 'finalGap: %.12e\n', denseReport.finalGap);
+fprintf(fid, 'stage2SideMinClearanceLeftRight: %s\n', mat2str(denseReport.stage2SideMinClearance, 12));
 fprintf(fid, 'stage2MaxLateralError: %.12e\n', denseReport.stage2MaxLateralError);
 fprintf(fid, 'stage2MaxHeightError: %.12e\n', denseReport.stage2MaxHeightError);
 fprintf(fid, 'stage2MaxAttitudeError: %.12e\n', denseReport.stage2MaxAttitudeError);

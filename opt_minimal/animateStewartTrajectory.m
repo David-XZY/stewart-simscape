@@ -55,7 +55,11 @@ for nodeIndex = 1:numel(traj.t)
               [model.A(2, legIndex), pTop(2, legIndex)], ...
               [model.A(3, legIndex), pTop(3, legIndex)], 'b-', 'LineWidth', 1.0);
     end
-    drawBox(scene.box.center_S, scene.box.R_S, scene.box.halfSize);
+    drawBox(scene.box.center_S, scene.box.R_S, scene.box.halfSize, [0.85 0.72 0.28], 0.14, [0.45 0.35 0.1]);
+    for obstacleIndex = 1:numel(scene.hood.obstacles)
+        obstacle = scene.hood.obstacles(obstacleIndex);
+        drawBox(obstacle.center_S, obstacle.R_S, obstacle.halfSize, [0.85 0.18 0.18], 0.25, [0.45 0.05 0.05]);
+    end
     drawCylinder(q, scene);
     plot3(traj.Q(1, :), traj.Q(2, :), traj.Q(3, :), 'k-', 'LineWidth', 1.0);
     plot3(scene.qWaypoint(1), scene.qWaypoint(2), scene.qWaypoint(3), 'mp', 'MarkerFaceColor', 'm', 'MarkerSize', 10);
@@ -63,7 +67,8 @@ for nodeIndex = 1:numel(traj.t)
     xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
     title(sprintf('t = %.2f s, clearance = %.4f m', traj.t(nodeIndex), traj.minClearance(nodeIndex)));
     view(45, 25);
-    allPoints = [model.A, pTop, traj.Q(1:3, :), scene.box.center_S, scene.qWaypoint(1:3), scene.qGoal(1:3)];
+    hoodCenters = reshape([scene.hood.obstacles.center_S], 3, []);
+    allPoints = [model.A, pTop, traj.Q(1:3, :), scene.box.center_S, hoodCenters, scene.qWaypoint(1:3), scene.qGoal(1:3)];
     pad = 0.35;
     xlim([min(allPoints(1,:))-pad, max(allPoints(1,:))+pad]);
     ylim([min(allPoints(2,:))-pad, max(allPoints(2,:))+pad]);
@@ -116,11 +121,11 @@ v3 = cross(axisVector, v2);
 basis = [axisVector, v2, v3];
 end
 
-function drawBox(center, R, halfSize)
+function drawBox(center, R, halfSize, faceColor, faceAlpha, edgeColor)
 cornersLocal = [ -1 -1 -1;  1 -1 -1;  1  1 -1; -1  1 -1; ...
                  -1 -1  1;  1 -1  1;  1  1  1; -1  1  1]' .* halfSize;
 corners = center + R * cornersLocal;
 faces = [1 2 3 4; 5 6 7 8; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8];
-patch('Vertices', corners.', 'Faces', faces, 'FaceColor', [0.85 0.72 0.28], ...
-    'FaceAlpha', 0.25, 'EdgeColor', [0.45 0.35 0.1], 'LineWidth', 1.2);
+patch('Vertices', corners.', 'Faces', faces, 'FaceColor', faceColor, ...
+    'FaceAlpha', faceAlpha, 'EdgeColor', edgeColor, 'LineWidth', 1.2);
 end

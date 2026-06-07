@@ -64,8 +64,6 @@ plotFiles{end+1} = plotLegSeries(t, tc, traj.Unode, traj.Umid, model.actuator.fo
     'actuator_force', 'force [N]', resultDir, timestamp); %#ok<AGROW>
 plotFiles{end+1} = plotForceRateSeries(t, tc, traj.Unode, traj.Umid, model.objective.forceRateScale, ...
     resultDir, timestamp); %#ok<AGROW>
-plotFiles{end+1} = plotPowerSeries(t, tc, traj.Unode, traj.Umid, traj.Ld, traj.LdMid, model.objective.powerScale, ...
-    resultDir, timestamp); %#ok<AGROW>
 
 fig = figure('Name', 'singularity_collision', 'Color', 'w');
 tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
@@ -82,12 +80,17 @@ xline(scene.phase.durationApproach, 'k--');
 grid on; xlabel('t [s]'); ylabel('condJ');
 title('normalized spatial Jacobian condition number (post-check warning)');
 nexttile;
-plot(t, traj.minClearance, 'o-', tc, traj.minClearanceMid, 'x', 'LineWidth', 1.1);
+if isfield(traj, 'collisionDistances')
+    plot(t, traj.collisionDistances.', 'o-', tc, traj.collisionDistancesMid.', 'x', 'LineWidth', 1.1);
+    legend({scene.hood.obstacles.name}, 'Location', 'best');
+else
+    plot(t, traj.minClearance, 'o-', tc, traj.minClearanceMid, 'x', 'LineWidth', 1.1);
+end
 yline(scene.collision.safeDistance, 'r--');
 yline(scene.collision.finalGap, 'g:');
 xline(scene.phase.durationApproach, 'k--');
 grid on; xlabel('t [s]'); ylabel('clearance [m]');
-title(sprintf('cylinder-box clearance, min %.6f m, final %.6f m', ...
+title(sprintf('cylinder-hood clearance, min %.6f m, final %.6f m', ...
     result.constraint.minClearance, result.constraint.finalGap));
 plotFiles{end+1} = saveFigure(fig, resultDir, ['singularity_collision_', timestamp]); %#ok<AGROW>
 
@@ -101,6 +104,11 @@ drawPlatformDisk([0; 0; 0], eye(3), model.rA, [0.62 0.69 0.76], 0.24, [0.35 0.41
 drawPlatformDisk(scene.q0(1:3), rpy2rotmZYX(scene.q0(4:6)), model.rB, [0.20 0.48 0.82], 0.16, 'none');
 drawPlatformDisk(scene.qWaypoint(1:3), rpy2rotmZYX(scene.qWaypoint(4:6)), model.rB, [0.20 0.48 0.82], 0.22, 'none');
 drawPlatformDisk(scene.qGoal(1:3), rpy2rotmZYX(scene.qGoal(4:6)), model.rB, [0.20 0.48 0.82], 0.28, [0.08 0.22 0.42]);
+drawBox(scene.box.center_S, scene.box.R_S, scene.box.halfSize, [0.85 0.72 0.28], 0.12, [0.45 0.35 0.1]);
+for obstacleIndex = 1:numel(scene.hood.obstacles)
+    obstacle = scene.hood.obstacles(obstacleIndex);
+    drawBox(obstacle.center_S, obstacle.R_S, obstacle.halfSize, [0.85 0.18 0.18], 0.22, [0.45 0.05 0.05]);
+end
 grid on; axis equal;
 xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
 title('platform origin path');
@@ -149,23 +157,6 @@ title('actuator force rate');
 fileName = saveFigure(fig, resultDir, ['actuator_force_rate_', timestamp]);
 end
 
-function fileName = plotPowerSeries(t, tc, forceNode, forceMid, legSpeedNode, legSpeedMid, powerScale, resultDir, timestamp)
-% plotPowerSeries - 绘制六条支链机械功率 P=F*Ld
-powerNode = forceNode .* legSpeedNode;
-powerMid = forceMid .* legSpeedMid;
-fig = figure('Name', 'actuator_power', 'Color', 'w');
-plot(t, powerNode.', 'o-', 'LineWidth', 1.0);
-hold on;
-plot(tc, powerMid.', 'x', 'LineWidth', 1.0);
-yline(powerScale, 'k--');
-yline(-powerScale, 'k--');
-grid on;
-xlabel('t [s]');
-ylabel('power [W]');
-title('actuator mechanical power');
-fileName = saveFigure(fig, resultDir, ['actuator_power_', timestamp]);
-end
-
 function fileName = saveFigure(fig, resultDir, baseName)
 fileName = fullfile(resultDir, [baseName, '.png']);
 exportgraphics(fig, fileName, 'Resolution', 160);
@@ -177,4 +168,13 @@ circleLocal = radius * [cos(angles); sin(angles); zeros(1, numel(angles))];
 circleWorld = center(:) + R * circleLocal;
 patch(circleWorld(1, :), circleWorld(2, :), circleWorld(3, :), faceColor, ...
     'FaceAlpha', alphaValue, 'EdgeColor', edgeColor, 'LineWidth', 1.0);
+end
+
+function drawBox(center, R, halfSize, faceColor, faceAlpha, edgeColor)
+cornersLocal = [ -1 -1 -1;  1 -1 -1;  1  1 -1; -1  1 -1; ...
+                 -1 -1  1;  1 -1  1;  1  1  1; -1  1  1]' .* halfSize;
+corners = center + R * cornersLocal;
+faces = [1 2 3 4; 5 6 7 8; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8];
+patch('Vertices', corners.', 'Faces', faces, 'FaceColor', faceColor, ...
+    'FaceAlpha', faceAlpha, 'EdgeColor', edgeColor, 'LineWidth', 1.0);
 end

@@ -1,0 +1,6 @@
+﻿IHSID-MANUAL-FATROP solver log
+FATROP formal solve was not started.
+Reason: current CasADi FATROP MATLAB interface rejected hessian_approximation=limited-memory during probe, so fair comparison is invalid.
+solverStatus=FATROP_LIMITED_MEMORY_UNAVAILABLE
+fatropComparisonValid=0
+failureReason=当前 CasADi FATROP 接口不接受 hessian_approximation=limited-memory，按要求停止 FATROP 对比。

@@ -28,24 +28,39 @@ cylinderCenter = q(1:3) + R * scene.objectCylinder.center_P;
 cylinderAxis = R * scene.objectCylinder.axis_P;
 cylinderAxis = cylinderAxis / norm(cylinderAxis);
 
-candidateNormals = buildCandidateNormals(cylinderCenter, cylinderAxis, scene);
-candidateGaps = zeros(1, size(candidateNormals, 2));
-for i = 1:size(candidateNormals, 2)
-    candidateGaps(i) = supportGap(candidateNormals(:, i), cylinderCenter, cylinderAxis, scene);
+obstacles = scene.hood.obstacles;
+distances = zeros(1, numel(obstacles));
+bestNormals = zeros(3, numel(obstacles));
+candidateGapsByObstacle = cell(1, numel(obstacles));
+for obstacleIndex = 1:numel(obstacles)
+    obstacle = obstacles(obstacleIndex);
+    candidateNormals = buildCandidateNormals(cylinderCenter, cylinderAxis, obstacle);
+    candidateGaps = zeros(1, size(candidateNormals, 2));
+    for i = 1:size(candidateNormals, 2)
+        candidateGaps(i) = supportGap(candidateNormals(:, i), cylinderCenter, cylinderAxis, obstacle, scene);
+    end
+    [distance, bestIndex] = max(candidateGaps);
+    bestNormal = candidateNormals(:, bestIndex);
+    if distance < scene.collision.safeDistance + 0.02
+        [distance, bestNormal] = refineNormalByFminsearch(bestNormal, cylinderCenter, cylinderAxis, obstacle, scene);
+    end
+    distances(obstacleIndex) = distance;
+    bestNormals(:, obstacleIndex) = bestNormal;
+    candidateGapsByObstacle{obstacleIndex} = candidateGaps;
 end
 
-[distance, bestIndex] = max(candidateGaps);
-bestNormal = candidateNormals(:, bestIndex);
-if distance < scene.collision.safeDistance + 0.02
-    [distance, bestNormal] = refineNormalByFminsearch(bestNormal, cylinderCenter, cylinderAxis, scene);
-end
+[minDistance, activeIndex] = min(distances);
 
 distanceInfo = struct();
-distanceInfo.distance = distance;
-distanceInfo.minDistance = distance;
-distanceInfo.distances = distance;
-distanceInfo.bestNormal = bestNormal;
-distanceInfo.candidateGaps = candidateGaps;
+distanceInfo.distance = minDistance;
+distanceInfo.minDistance = minDistance;
+distanceInfo.distances = distances;
+distanceInfo.bestNormal = bestNormals(:, activeIndex);
+distanceInfo.bestNormals = bestNormals;
+distanceInfo.candidateGaps = candidateGapsByObstacle;
+distanceInfo.minIndex = activeIndex;
+distanceInfo.activeObstacleName = obstacles(activeIndex).name;
+distanceInfo.obstacleNames = {obstacles.name};
 distanceInfo.pCylinder_S = cylinderCenter;
 distanceInfo.axis_S = cylinderAxis;
 distanceInfo.pCylinder_B = scene.box.R_S.' * (cylinderCenter - scene.box.center_S);
@@ -53,9 +68,9 @@ distanceInfo.axis_B = scene.box.R_S.' * cylinderAxis;
 distanceInfo.method = 'support-gap candidate normals plus fminsearch refinement when near safety boundary';
 end
 
-function normals = buildCandidateNormals(cylinderCenter, cylinderAxis, scene)
-axes = scene.box.R_S;
-centerVector = scene.box.center_S - cylinderCenter;
+function normals = buildCandidateNormals(cylinderCenter, cylinderAxis, obstacle)
+axes = obstacle.R_S;
+centerVector = obstacle.center_S - cylinderCenter;
 raw = [axes, -axes, cylinderAxis, -cylinderAxis, centerVector, -centerVector];
 normals = zeros(3, 0);
 for i = 1:size(raw, 2)
@@ -67,23 +82,23 @@ for i = 1:size(raw, 2)
 end
 end
 
-function gap = supportGap(n, cylinderCenter, cylinderAxis, scene)
-boxMin = n.' * scene.box.center_S - sum(scene.box.halfSize(:) .* abs(scene.box.R_S.' * n));
+function gap = supportGap(n, cylinderCenter, cylinderAxis, obstacle, scene)
+boxMin = n.' * obstacle.center_S - sum(obstacle.halfSize(:) .* abs(obstacle.R_S.' * n));
 axial = 0.5 * scene.objectCylinder.length * abs(n.' * cylinderAxis);
 radial = scene.objectCylinder.radius * sqrt(max(0, 1 - (n.' * cylinderAxis)^2));
 cylinderMax = n.' * cylinderCenter + axial + radial;
 gap = boxMin - cylinderMax;
 end
 
-function [bestGap, bestNormal] = refineNormalByFminsearch(initialNormal, cylinderCenter, cylinderAxis, scene)
+function [bestGap, bestNormal] = refineNormalByFminsearch(initialNormal, cylinderCenter, cylinderAxis, obstacle, scene)
 initialAngles = normalToAngles(initialNormal);
 options = optimset('Display', 'off', 'MaxIter', 80, 'MaxFunEvals', 180, ...
     'TolX', 1e-10, 'TolFun', 1e-10);
-objective = @(angles) -supportGap(anglesToNormal(angles), cylinderCenter, cylinderAxis, scene);
+objective = @(angles) -supportGap(anglesToNormal(angles), cylinderCenter, cylinderAxis, obstacle, scene);
 [anglesOpt, valueOpt] = fminsearch(objective, initialAngles, options);
 candidateNormal = anglesToNormal(anglesOpt);
 candidateGap = -valueOpt;
-initialGap = supportGap(initialNormal, cylinderCenter, cylinderAxis, scene);
+initialGap = supportGap(initialNormal, cylinderCenter, cylinderAxis, obstacle, scene);
 if candidateGap >= initialGap
     bestGap = candidateGap;
     bestNormal = candidateNormal;

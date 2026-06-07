@@ -2,7 +2,7 @@ function info = setupCasadiIpoptMa27(projectRoot)
 % setupCasadiIpoptMa27 - 配置 CasADi/IPOPT/MA27 并执行强制预检
 %
 % 用途：
-%   将工程自带 CasADi 3.5.5 MATLAB 包和 CoinHSL DLL 目录加入当前 MATLAB 进程，
+%   将工程自带 CasADi 3.7.2 MATLAB 包和 CoinHSL DLL 目录加入当前 MATLAB 进程，
 %   使用 opts.ipopt.linear_solver='ma27' 求解一维测试 NLP。预检失败即抛出真实异常，
 %   禁止静默回退到 mumps、sqp 或其他线性求解器。
 %
@@ -22,25 +22,42 @@ if nargin < 1 || isempty(projectRoot)
     projectRoot = fileparts(fileparts(mfilename('fullpath')));
 end
 
-casadiRoot = fullfile(projectRoot, 'lib', 'casadi-windows-matlabR2016a-v3.5.5');
+casadiRoot = fullfile(projectRoot, 'lib', 'casadi-windows-matlabR2018b-v3.7.2');
 hslBin = fullfile(projectRoot, 'lib', ...
     'CoinHSL-archive.v2023.11.17.x86_64-w64-mingw32-libgfortran5', 'bin');
 
 if exist(casadiRoot, 'dir') ~= 7
     error('setupCasadiIpoptMa27:MissingCasadi', '未找到 CasADi 目录：%s', casadiRoot);
 end
+mexPath = fullfile(casadiRoot, 'casadiMEX.mexw64');
+mexExistCode = exist(mexPath, 'file');
+if ~ismember(mexExistCode, [2, 3])
+    error('setupCasadiIpoptMa27:MissingCasadiMex', '未找到 CasADi MATLAB MEX：%s', mexPath);
+end
+if exist(fullfile(casadiRoot, 'libcasadi_nlpsol_fatrop.dll'), 'file') ~= 2
+    error('setupCasadiIpoptMa27:MissingFatropPlugin', '未找到 CasADi FATROP 插件：%s', fullfile(casadiRoot, 'libcasadi_nlpsol_fatrop.dll'));
+end
 if exist(hslBin, 'dir') ~= 7
     error('setupCasadiIpoptMa27:MissingHSL', '未找到 CoinHSL bin 目录：%s', hslBin);
 end
 
-addpath(casadiRoot);
+oldCasadiDirs = dir(fullfile(projectRoot, 'lib', 'casadi-windows-matlabR*'));
+for i = 1:numel(oldCasadiDirs)
+    oldPath = fullfile(oldCasadiDirs(i).folder, oldCasadiDirs(i).name);
+    if ~strcmpi(oldPath, casadiRoot) && contains(path, oldPath)
+        rmpath(oldPath);
+    end
+end
+addpath(casadiRoot, '-begin');
 setenv('PATH', [casadiRoot, pathsep, hslBin, pathsep, getenv('PATH')]);
 import casadi.*
 
 versionText = casadi.CasadiMeta.version();
+hasFatrop = has_nlpsol('fatrop');
 fprintf('CasADi root: %s\n', casadiRoot);
 fprintf('CoinHSL bin: %s\n', hslBin);
 fprintf('CasADi version: %s\n', versionText);
+fprintf('CasADi FATROP plugin: %d\n', hasFatrop);
 fprintf('MA27 precheck: opts.ipopt.linear_solver = ma27\n');
 
 x = MX.sym('x', 1, 1);
@@ -78,6 +95,7 @@ info.projectRoot = projectRoot;
 info.casadiRoot = casadiRoot;
 info.hslBin = hslBin;
 info.casadiVersion = versionText;
+info.hasFatrop = hasFatrop;
 info.linearSolver = 'ma27';
 info.precheckX = xOpt;
 info.returnStatus = status;

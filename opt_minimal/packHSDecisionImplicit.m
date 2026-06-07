@@ -34,19 +34,28 @@ validateattributes(Fmid, {'double'}, {'real', 'finite', 'size', [6, disc.numMidp
 if nargin < 7 || isempty(separator)
     separator = zeros(8, 0);
 end
-if isfield(disc, 'numStage1CollisionPoints') && disc.numStage1CollisionPoints > 0
-    validateattributes(separator, {'double'}, {'real', 'finite', 'size', [8, disc.numStage1CollisionPoints]}, ...
+numCollisionCertificates = getNumCollisionCertificates(disc);
+if numCollisionCertificates > 0
+    validateattributes(separator, {'double'}, {'real', 'finite', 'size', [8, numCollisionCertificates]}, ...
         mfilename, 'separator');
 end
 
 z = [Xinternal(:); Anode(:); Amid(:); Fnode(:); Fmid(:); separator(:)];
 expectedLength = 12*(disc.numNodes-2) + 6*disc.numNodes + 6*disc.numMidpoints + ...
     6*disc.numNodes + 6*disc.numMidpoints;
-if isfield(disc, 'numStage1CollisionPoints')
-    expectedLength = expectedLength + 8*disc.numStage1CollisionPoints;
-end
+expectedLength = expectedLength + 8*numCollisionCertificates;
 if numel(z) ~= expectedLength
     error('packHSDecisionImplicit:InvalidLength', ...
         '隐式 HS 决策变量数量必须为 %d，当前为 %d。', expectedLength, numel(z));
+end
+end
+
+function n = getNumCollisionCertificates(disc)
+if isfield(disc, 'numCollisionCertificates')
+    n = disc.numCollisionCertificates;
+elseif isfield(disc, 'numStage1CollisionPoints')
+    n = disc.numStage1CollisionPoints;
+else
+    n = 0;
 end
 end

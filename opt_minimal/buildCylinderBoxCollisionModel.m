@@ -17,14 +17,15 @@ function collisionModel = buildCylinderBoxCollisionModel(scene)
 %   buildCylinderBoxTransferScene 生成 scene.collisionGeometry，供 NLP、验证和绘图共享。
 
 collisionModel = struct();
-collisionModel.box.center_S = scene.box.center_S;
-collisionModel.box.R_S = scene.box.R_S;
-collisionModel.box.axes_S = scene.box.R_S;
-collisionModel.box.size = scene.box.size;
-collisionModel.box.halfSize = scene.box.halfSize;
+collisionModel.obstacles = scene.hood.obstacles;
+collisionModel.obstacleNames = {scene.hood.obstacles.name};
+collisionModel.roof = scene.hood.roof;
+collisionModel.leftSkirt = scene.hood.leftSkirt;
+collisionModel.rightSkirt = scene.hood.rightSkirt;
 collisionModel.objectCylinder = scene.objectCylinder;
 collisionModel.safeDistance = scene.collision.safeDistance;
 collisionModel.finalGap = scene.collision.finalGap;
+collisionModel.stage1ConstraintDistance = scene.collision.stage1ConstraintDistance;
 collisionModel.smoothingEps = scene.collision.smoothingEps;
 collisionModel.separatorStrictUnit = scene.collision.separatorStrictUnit;
 end

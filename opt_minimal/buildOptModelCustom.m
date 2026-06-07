@@ -72,13 +72,10 @@ model.objective.weightNominalStage1 = 0.1;
 model.objective.weightForceRate = 0.08;
 model.objective.weightLegAccel = 0.30;
 model.objective.weightSingularity = 0.40;
-model.objective.weightPower = 1.0;
 model.objective.positionDeviationScale = 0.10;
 model.objective.attitudeDeviationScale = deg2rad(10);
 model.objective.attitudeDeviationWeight = 1.0;
 model.objective.forceRateScale = 1000;
-% 功率尺度单位为 W，机械功率由支链驱动力 F 与支链速度 Ld 相乘得到。
-model.objective.powerScale = 1000;
 model.objective.legAccelScale = 1.2;
 model.objective.singularityEpsilon = (0.05 * model.singularity.sigmaMinSafe)^2;
 model.objective.singularityScale = model.singularity.sigmaMinSafe^2 / 6;

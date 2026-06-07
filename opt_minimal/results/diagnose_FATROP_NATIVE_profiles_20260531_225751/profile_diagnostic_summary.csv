@@ -1,0 +1,3 @@
+profile,N1,N2,numVariables,numEq,numIneq,ngMax,ngSum,solverStatus,solverSuccess,solveTime_s,objective,maxEqResidual,maxIneqViolation,maxPathViolation,maxRoofViolation,maxLeftSideViolation,maxRightSideViolation,maxInsertionMonotonicViolation,maxSoftInsertionResidual,maxSoftSideCollisionResidual,degenerateJacobianCount,failureReason
+full,4,2,193,78,469,85,475,1,0,31.1406569,11.6194118873757,7.24295666516579,0.538882835874594,0,0,0.538882835874594,0.150153292215657,0,0.0181199388648439,0,0,
+full_smooth_collision,4,2,193,78,469,85,475,1,0,33.8508259,269.849585327843,161.016565859946,37.3343675346227,37.3343675348667,0,0,0,0,0.0247044795930079,0,0,

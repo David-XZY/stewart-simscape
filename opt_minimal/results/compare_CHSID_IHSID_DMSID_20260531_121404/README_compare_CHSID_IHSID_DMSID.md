@@ -1,0 +1,46 @@
+# CHSID / IHSID / DMSID 隐式动力学对比实验
+
+本目录由 `run_04_compare_CHSID_IHSID_DMSID.m` 生成。
+
+## 方法命名
+
+当前 active 实验只保留 CHSID、IHSID、DMSID 三种隐式动力学方法。
+
+- CHSID: Compressed Hermite-Simpson + Implicit Dynamics。旧名 HSI。
+- IHSID: Implicit / Full Hermite-Simpson + Implicit Dynamics，中点状态为独立变量。
+- DMSID: Direct Multiple Shooting + Implicit Dynamics。本轮新增。
+
+## 统一 IPOPT 设置
+
+- linear_solver: `ma27`
+- hessian_approximation: `limited-memory`
+- max_iter: `3`
+- tol: `1e-06`
+- constr_viol_tol: `1e-06`
+- acceptable_tol: `0.001`
+- acceptable_iter: `1`
+- bound_push/bound_frac: `1e-08` / `1e-08`
+- mu_strategy: `adaptive`
+
+三种方法均通过 `makeCommonIpoptOptions` 生成设置；若 exact Hessian 无法稳定运行，应统一切换，不允许单独调整某一种方法。
+
+IHSID 的 `maxMidConsistencyResidual` 来自新增 g_mid；CHSID/DMSID 对该字段填 NaN。
+
+## 验证口径
+
+验证分为三层：离散 NLP 可行性、工程可行性、轨迹质量诊断。
+CHS 的 dense 非配点动力学残差只作为轨迹质量诊断，不直接否决 engineeringPassed。
+DMS 的 dense 动力学残差由积分器定义，不能直接解释为 DMS 物理一致性优于 CHS。
+
+## 当前自检结果
+
+```text
+    method     methodName    N1    N2    gridApproach    gridInsertion     h     numZ    numVariables    numEq    numIneq            solverStatus                      ipoptStatus             solverSuccess    successFlag    engineeringPassed    buildTime_s    solveTime_s    totalTime_s    solveTime    iterations    iterCount    iter_count    n_eval_f    n_eval_g    n_eval_grad_f    n_eval_jac_g    n_eval_h    time_nlp_f    time_nlp_g    time_grad_f    time_jac_g    time_hess_l    time_other_upper_bound    jac_g_total_s    jac_g_avg_s    jac_g_pct_solve    casadi_eval_pct_solve    objectiveTotal    objective    nominalCost    powerCost    legAccelCost    singularityCost    forceRateCost    objectiveForce    objectiveLegAccel    objectiveSingularity    maxEqResidual    maxIneqViolation    minStage1Clearance_m    minStage1Gap    minDenseGap    finalGap_m    maxDynResidual    maxDefectResidual    minSigmaMin    maxCondJ    maxAbsLegSpeed    maxAbsLegAccel    maxAbsForce    maxLegSpeedViolation    maxLegAccelViolation    maxPathViolation    maxForceViolation    minSigma    maxStage2LateralError    maxStage2HeightError    maxStage2AttitudeError    maxInsertionBackwardSpeedViolation    stage2Passed    denseSampleCount    dynamicsEvalCountEstimate    maxDenseDynResidual    maxHSDefectResidual    maxMidConsistencyResidual    ipoptLinearSolver    ipoptHessianApproximation    ipoptTol    ipoptConstrViolTol    ipoptMaxIter           failureReason        
+    _______    __________    __    __    ____________    _____________    ___    ____    ____________    _____    _______    _____________________________    _____________________________    _____________    ___________    _________________    ___________    ___________    ___________    _________    __________    _________    __________    ________    ________    _____________    ____________    ________    __________    __________    ___________    __________    ___________    ______________________    _____________    ___________    _______________    _____________________    ______________    _________    ___________    _________    ____________    _______________    _____________    ______________    _________________    ____________________    _____________    ________________    ____________________    ____________    ___________    __________    ______________    _________________    ___________    ________    ______________    ______________    ___________    ____________________    ____________________    ________________    _________________    ________    _____________________    ____________________    ______________________    __________________________________    ____________    ________________    _________________________    ___________________    ___________________    _________________________    _________________    _________________________    ________    __________________    ____________    ____________________________
+
+    "CHSID"     "CHSID"      2     1          2                1          2.5    260         260          118       445      "Maximum_Iterations_Exceeded"    "Maximum_Iterations_Exceeded"        false           false             false            1.7082        0.048272        1.7564       0.048272         3             3            3            4           4              5               5            NaN             0         0.002          0.006         0.026           NaN               0.014272               0.026            0.0052         53.861                70.434               0.27071         0.27071     0.00024792     0.073122       0.044219          0.07994          0.073185          0.14631            0.044219                0.07994              14.216           0.53827                0.03614             0.03614          0.005        0.005            22.51              0.11823          0.28467       8.3275        0.30011           0.16049          1055.5                0                       0                     0                    0            0.28467          1.1076e-06               3.8856e-05               9.5786e-06                          0                        false               61                       7                       22.51                  0.11823                      NaN                  "ma27"              "limited-memory"          1e-06            1e-06                3          "求解完成但未通过统一工程后验验证"
+    "IHSID"     "IHSID"      2     1          2                1          2.5    296         296          154       445      "Maximum_Iterations_Exceeded"    "Maximum_Iterations_Exceeded"        false           false             false            1.3397        0.024729        1.3644       0.024729         3             3            3            6           6              4               6            NaN             0             0          0.001         0.014           NaN              0.0097292               0.014         0.0023333         56.613                60.657               0.31281         0.31281       0.011408      0.10097       0.046686         0.080526          0.073216          0.17419            0.046686               0.080526            0.070717           0.53887               0.035422            0.035422          0.005        0.005           22.531            0.0052507          0.28468       8.3273        0.30758           0.16054          1055.5                0                       0                     0                    0            0.28468          3.7464e-06               8.7102e-05               4.1756e-05                          0                        false               61                       7                      22.531                0.0052507                 0.070717                  "ma27"              "limited-memory"          1e-06            1e-06                3          "求解完成但未通过统一工程后验验证"
+    "DMSID"     "DMSID"      2     1          2                1          2.5    260         260          118       445      "Maximum_Iterations_Exceeded"    "Maximum_Iterations_Exceeded"        false           false             false            1.5521        0.070707        1.6228       0.070707         3             3            3            6           6              4               6            NaN          0.01             0          0.002         0.048           NaN               0.010707               0.048             0.008         67.886                84.857               0.29419         0.29419       0.028118     0.082102        0.03129         0.079336          0.073342          0.15544             0.03129               0.079336              32.637           0.54773               0.035507            0.035507       0.035507        0.005           87.982             0.091062          0.28512       8.3157          0.281           0.16697          1055.8                0                       0                     0                    0            0.28512           0.0058135                 0.025727                 0.023027                          0                        false               61                      31                      87.982                 0.091062                      NaN                  "ma27"              "limited-memory"          1e-06            1e-06                3          "求解完成但未通过统一工程后验验证"
+
+
+```

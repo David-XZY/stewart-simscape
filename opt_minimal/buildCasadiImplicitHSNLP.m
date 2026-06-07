@@ -1,9 +1,9 @@
-function nlpData = buildCasadiImplicitHSNLP(model, scene, disc, initialGuess)
+function nlpData = buildCasadiImplicitHSNLP(model, scene, disc, initialGuess, solverOptions)
 % buildCasadiImplicitHSNLP - 构建两阶段 CasADi MX 隐式 HS 轨迹优化 NLP
 %
 % 文件用途：
 %   构造运动圆柱体-固定长方体两阶段轨迹优化问题，保留 Stewart 隐式动力学、
-%   Hermite-Simpson 配点、CasADi/IPOPT/MA27 和三项目标函数。
+%   Hermite-Simpson 配点、CasADi/IPOPT/MA27 和统一目标函数。
 %
 % 输入参数：
 %   model struct - Stewart 几何、执行器、动力学和目标函数参数。
@@ -25,6 +25,9 @@ if nargin < 4 || ~isfield(initialGuess, 'nominalStage1')
     error('buildCasadiImplicitHSNLP:MissingNominalReference', ...
         '必须传入 buildInitialGuessTwoPhaseHSImplicit 生成的 initialGuess.nominalStage1 作为第一阶段标称轨迹。');
 end
+if nargin < 5
+    solverOptions = struct();
+end
 nominalStage1 = initialGuess.nominalStage1;
 
 sizes = computeImplicitProblemSizes(disc);
@@ -45,18 +48,29 @@ for nodeIndex = 1:disc.numNodes
     cIneq{end+1} = point.cPath; %#ok<AGROW>
     if nodeIndex <= disc.numIntervalsApproach + 1
         sepIndex = nodeIndex;
-        [gSep, cSep] = separatorConstraintsExpr(Xnode(1:6, nodeIndex), separator(:, sepIndex), scene);
+        [gSep, cSep] = separatorConstraintsExpr(Xnode(1:6, nodeIndex), separator(:, sepIndex), ...
+            scene.hood.roof, scene.collision.stage1ConstraintDistance, scene);
         gDyn{end+1} = gSep; %#ok<AGROW>
         cIneq{end+1} = cSep; %#ok<AGROW>
     end
+    allPointIndex = nodeIndex;
+    [gLeft, cLeft] = separatorConstraintsExpr(Xnode(1:6, nodeIndex), ...
+        separator(:, disc.numStage1CollisionPoints + allPointIndex), ...
+        scene.hood.leftSkirt, scene.collision.safeDistance, scene);
+    [gRight, cRight] = separatorConstraintsExpr(Xnode(1:6, nodeIndex), ...
+        separator(:, disc.numStage1CollisionPoints + disc.numAllCollisionPoints + allPointIndex), ...
+        scene.hood.rightSkirt, scene.collision.safeDistance, scene);
+    gDyn{end+1} = gLeft; %#ok<AGROW>
+    gDyn{end+1} = gRight; %#ok<AGROW>
+    cIneq{end+1} = cLeft; %#ok<AGROW>
+    cIneq{end+1} = cRight; %#ok<AGROW>
     if isStage2Node(nodeIndex, disc)
         [gLine, cMono] = insertionConstraintsExpr(Xnode(:, nodeIndex), scene);
         gStage2{end+1} = gLine; %#ok<AGROW>
         cIneq{end+1} = cMono; %#ok<AGROW>
     end
     nominalTerm = nominalNodeCostExpr(Xnode(1:6, nodeIndex), nodeIndex, nominalStage1, model, scene, disc);
-    nodeStage{nodeIndex} = runningCostExpr(nominalTerm, Fnode(:, nodeIndex), ...
-        point.Ld, point.Ldd, point.phiSing, model);
+    nodeStage{nodeIndex} = runningCostExpr(nominalTerm, point.Ldd, point.phiSing, model);
 end
 
 for intervalIndex = 1:disc.numIntervals
@@ -68,10 +82,22 @@ for intervalIndex = 1:disc.numIntervals
     cIneq{end+1} = pointMid.cPath; %#ok<AGROW>
     if intervalIndex <= disc.numIntervalsApproach
         sepIndex = disc.numIntervalsApproach + 1 + intervalIndex;
-        [gSepMid, cSepMid] = separatorConstraintsExpr(Xc(1:6), separator(:, sepIndex), scene);
+        [gSepMid, cSepMid] = separatorConstraintsExpr(Xc(1:6), separator(:, sepIndex), ...
+            scene.hood.roof, scene.collision.stage1ConstraintDistance, scene);
         gDyn{end+1} = gSepMid; %#ok<AGROW>
         cIneq{end+1} = cSepMid; %#ok<AGROW>
     end
+    allPointIndex = disc.numNodes + intervalIndex;
+    [gLeftMid, cLeftMid] = separatorConstraintsExpr(Xc(1:6), ...
+        separator(:, disc.numStage1CollisionPoints + allPointIndex), ...
+        scene.hood.leftSkirt, scene.collision.safeDistance, scene);
+    [gRightMid, cRightMid] = separatorConstraintsExpr(Xc(1:6), ...
+        separator(:, disc.numStage1CollisionPoints + disc.numAllCollisionPoints + allPointIndex), ...
+        scene.hood.rightSkirt, scene.collision.safeDistance, scene);
+    gDyn{end+1} = gLeftMid; %#ok<AGROW>
+    gDyn{end+1} = gRightMid; %#ok<AGROW>
+    cIneq{end+1} = cLeftMid; %#ok<AGROW>
+    cIneq{end+1} = cRightMid; %#ok<AGROW>
     if isStage2Interval(intervalIndex, disc)
         [gLineMid, cMonoMid] = insertionConstraintsExpr(Xc, scene);
         gStage2{end+1} = gLineMid; %#ok<AGROW>
@@ -80,8 +106,7 @@ for intervalIndex = 1:disc.numIntervals
     gHS{end+1} = Xnode(:, intervalIndex+1) - Xnode(:, intervalIndex) - ...
         disc.h/6*(fNode(:, intervalIndex) + 4*fc + fNode(:, intervalIndex+1)); %#ok<AGROW>
     nominalMidTerm = nominalMidCostExpr(Xc(1:6), intervalIndex, nominalStage1, model, scene, disc);
-    midpointStage = runningCostExpr(nominalMidTerm, Fmid(:, intervalIndex), ...
-        pointMid.Ld, pointMid.Ldd, pointMid.phiSing, model);
+    midpointStage = runningCostExpr(nominalMidTerm, pointMid.Ldd, pointMid.phiSing, model);
     forceRateTerm = forceRateCostExpr(Fnode(:, intervalIndex), Fmid(:, intervalIndex), ...
         Fnode(:, intervalIndex+1), disc.h, model);
     J = J + disc.h/6*(nodeStage{intervalIndex} + 4*midpointStage + nodeStage{intervalIndex+1}) + ...
@@ -98,14 +123,7 @@ assert(numel(gEq) == sizes.numEq, '两阶段隐式 NLP 等式数量不匹配。'
 assert(numel(cIneqExpr) == sizes.numIneq, '两阶段隐式 NLP 不等式数量不匹配。');
 
 nlp = struct('x', z, 'f', J, 'g', g);
-opts = struct();
-opts.print_time = true;
-opts.ipopt.linear_solver = 'ma27';
-opts.ipopt.max_iter = 300;
-opts.ipopt.tol = 1e-6;
-opts.ipopt.constr_viol_tol = 1e-6;
-opts.ipopt.print_level = 4;
-opts.ipopt.hessian_approximation = 'exact';
+opts = makeCommonIpoptOptions(solverOptions);
 solver = nlpsol('solver', 'ipopt', nlp, opts);
 
 [lbz, ubz] = buildDecisionBoundsImplicit(disc, model);
@@ -127,6 +145,7 @@ nlpData.eval = Function('implicit_hs_eval', {z}, {J, gEq, cIneqExpr}, ...
     {'z'}, {'J', 'gEq', 'cIneq'});
 nlpData.sizes = sizes;
 nlpData.opts = opts;
+nlpData.method = 'CHSID';
 end
 
 function sizes = computeImplicitProblemSizes(disc)
@@ -137,17 +156,22 @@ numStage2Nodes = disc.numIntervalsInsertion + 1;
 numStage2Midpoints = disc.numIntervalsInsertion;
 sizes = struct();
 sizes.numZ = 12*(numNodes - 2) + 6*numNodes + 6*numMidpoints + 6*numNodes + 6*numMidpoints;
-if isfield(disc, 'numStage1CollisionPoints')
-    sizes.numZ = sizes.numZ + 8*disc.numStage1CollisionPoints;
-end
+numCollisionCertificates = getNumCollisionCertificates(disc);
+sizes.numZ = sizes.numZ + 8*numCollisionCertificates;
 sizes.numEq = 12*numIntervals + 6*(numNodes + numMidpoints) + 6 + ...
     5*(numStage2Nodes + numStage2Midpoints);
-if isfield(disc, 'numStage1CollisionPoints')
-    sizes.numEq = sizes.numEq + disc.numStage1CollisionPoints;
-end
+sizes.numEq = sizes.numEq + numCollisionCertificates;
 sizes.numIneq = 36*(numNodes + numMidpoints) + numStage2Nodes + numStage2Midpoints;
-if isfield(disc, 'numStage1CollisionPoints')
-    sizes.numIneq = sizes.numIneq + 10*disc.numStage1CollisionPoints;
+sizes.numIneq = sizes.numIneq + 10*numCollisionCertificates;
+end
+
+function n = getNumCollisionCertificates(disc)
+if isfield(disc, 'numCollisionCertificates')
+    n = disc.numCollisionCertificates;
+elseif isfield(disc, 'numStage1CollisionPoints')
+    n = disc.numStage1CollisionPoints;
+else
+    n = 0;
 end
 end
 
@@ -173,9 +197,10 @@ midForceCount = 6*disc.numMidpoints;
 Fmid = reshape(z(cursor + (1:midForceCount)), 6, disc.numMidpoints);
 cursor = cursor + midForceCount;
 
-if isfield(disc, 'numStage1CollisionPoints') && disc.numStage1CollisionPoints > 0
-    sepCount = 8*disc.numStage1CollisionPoints;
-    separator = reshape(z(cursor + (1:sepCount)), 8, disc.numStage1CollisionPoints);
+numCollisionCertificates = getNumCollisionCertificates(disc);
+if numCollisionCertificates > 0
+    sepCount = 8*numCollisionCertificates;
+    separator = reshape(z(cursor + (1:sepCount)), 8, numCollisionCertificates);
 else
     separator = MX.zeros(8, 0);
 end
@@ -190,9 +215,8 @@ midAccelCount = 6*disc.numMidpoints;
 nodeForceCount = 6*disc.numNodes;
 midForceCount = 6*disc.numMidpoints;
 totalLength = internalCount + nodeAccelCount + midAccelCount + nodeForceCount + midForceCount;
-if isfield(disc, 'numStage1CollisionPoints')
-    totalLength = totalLength + 8*disc.numStage1CollisionPoints;
-end
+numCollisionCertificates = getNumCollisionCertificates(disc);
+totalLength = totalLength + 8*numCollisionCertificates;
 lbz = -inf(totalLength, 1);
 ubz = inf(totalLength, 1);
 forceStart = internalCount + nodeAccelCount + midAccelCount + 1;
@@ -200,7 +224,7 @@ forceLower = [repmat(model.actuator.forceMin, disc.numNodes, 1); ...
               repmat(model.actuator.forceMin, disc.numMidpoints, 1)];
 forceUpper = [repmat(model.actuator.forceMax, disc.numNodes, 1); ...
               repmat(model.actuator.forceMax, disc.numMidpoints, 1)];
-if isfield(disc, 'numStage1CollisionPoints') && disc.numStage1CollisionPoints > 0
+if numCollisionCertificates > 0
     forceEnd = forceStart + numel(forceLower) - 1;
     lbz(forceStart:forceEnd) = forceLower;
     ubz(forceStart:forceEnd) = forceUpper;
@@ -212,10 +236,8 @@ else
 end
 end
 
-function value = runningCostExpr(nominalTerm, F, Ld, Ldd, phiSing, model)
-powerTerm = sumSquares((F .* Ld) ./ model.objective.powerScale);
+function value = runningCostExpr(nominalTerm, Ldd, phiSing, model)
 value = model.objective.weightNominalStage1 * nominalTerm + ...
-    model.objective.weightPower * powerTerm + ...
     sumSquares(Ldd ./ model.objective.legAccelScale) * model.objective.weightLegAccel + ...
     model.objective.weightSingularity * phiSing;
 end
@@ -276,16 +298,16 @@ cPath = [kin.L - model.lmax;
 point = struct('Ld', Ld, 'Ldd', Ldd, 'cPath', cPath, 'rDyn', rDyn, 'phiSing', phiSing);
 end
 
-function [gSep, cSep] = separatorConstraintsExpr(q, sep, scene)
+function [gSep, cSep] = separatorConstraintsExpr(q, sep, obstacle, requiredDistance, scene)
 n = sep(1:3);
 eta = sep(4:6);
 zeta = sep(7);
 rho = sep(8);
 [centerS, axisS] = cylinderPoseWorldExpr(q, scene);
-boxAxes = scene.box.R_S;
+boxAxes = obstacle.R_S;
 PperpN = n - axisS * dot3(axisS, n);
 radialNorm = sqrt(dot3(PperpN, PperpN) + scene.collision.smoothingEps^2);
-gap = dot3(n, scene.box.center_S - centerS) - scene.box.halfSize.' * eta - ...
+gap = dot3(n, obstacle.center_S - centerS) - obstacle.halfSize.' * eta - ...
     0.5 * scene.objectCylinder.length * zeta - scene.objectCylinder.radius * rho;
 gSep = dot3(n, n) - 1;
 cSep = [dot3(n, boxAxes(:, 1)) - eta(1);
@@ -297,7 +319,7 @@ cSep = [dot3(n, boxAxes(:, 1)) - eta(1);
         dot3(n, axisS) - zeta;
         -dot3(n, axisS) - zeta;
         radialNorm - rho;
-        scene.collision.stage1ConstraintDistance - gap];
+        requiredDistance - gap];
 end
 
 function [gLine, cMono] = insertionConstraintsExpr(X, scene)
@@ -338,6 +360,10 @@ epsC = scene.collision.smoothingEps;
 rhoZ = 0.5 * scene.objectCylinder.length * sqrt(mu^2 + epsC^2) + ...
     scene.objectCylinder.radius * sqrt(1 - mu^2 + epsC^2);
 d = -scene.box.halfSize(3) - (pCylinder_B(3) + rhoZ);
+if isfield(scene, 'hood') && isfield(scene.hood, 'roof')
+    roofLowerFaceZ_B = scene.hood.roof.center_B(3) - scene.hood.roof.halfSize(3);
+    d = roofLowerFaceZ_B - (pCylinder_B(3) + rhoZ);
+end
 end
 
 function [centerS, axisS] = cylinderPoseWorldExpr(q, scene)

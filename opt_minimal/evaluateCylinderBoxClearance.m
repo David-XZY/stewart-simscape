@@ -32,7 +32,8 @@ axis_B = axis_B / norm(axis_B);
 mu = axis_B(3);
 rhoZ = 0.5 * scene.objectCylinder.length * abs(mu) + ...
     scene.objectCylinder.radius * sqrt(max(0, 1 - mu^2));
-distance = -scene.box.halfSize(3) - (pCylinder_B(3) + rhoZ);
+roofLowerFaceZ_B = scene.hood.roof.center_B(3) - scene.hood.roof.halfSize(3);
+distance = roofLowerFaceZ_B - (pCylinder_B(3) + rhoZ);
 
 clearance = struct();
 clearance.distance = distance;
@@ -45,6 +46,7 @@ clearance.axis_S = axis_S;
 clearance.axis_B = axis_B;
 clearance.mu = mu;
 clearance.rhoZ = rhoZ;
+clearance.roofLowerFaceZ_B = roofLowerFaceZ_B;
 clearance.finalGapError = distance - scene.collision.finalGap;
 clearance.safeDistanceResidual = scene.collision.safeDistance - distance;
 end

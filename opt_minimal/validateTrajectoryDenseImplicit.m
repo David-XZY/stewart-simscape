@@ -33,7 +33,10 @@ allForce = [];
 allSigma = [];
 allCond = [];
 allClearance = [];
+allObstacleClearance = zeros(numel(scene.hood.obstacles), 0);
 allStage1Clearance = [];
+allStage1ObstacleClearance = zeros(numel(scene.hood.obstacles), 0);
+stage2SideClearance = [];
 allDynState = [];
 allDynGeom = [];
 allKinResidual = [];
@@ -93,10 +96,13 @@ for intervalIndex = 1:disc.numIntervals
         allForce = [allForce, F]; %#ok<AGROW>
         allSigma = [allSigma, pointGeom.sigmaMin]; %#ok<AGROW>
         allCond = [allCond, pointGeom.condJ]; %#ok<AGROW>
-        allClearance = [allClearance; pointGeom.collisionDistances(:)]; %#ok<AGROW>
+        clearanceVector = pointGeom.collisionDistances(:);
+        allClearance = [allClearance; clearanceVector]; %#ok<AGROW>
+        allObstacleClearance = [allObstacleClearance, clearanceVector]; %#ok<AGROW>
         sampleTime = disc.tNode(intervalIndex) + tau*disc.h;
         if sampleTime <= disc.durationApproach + 1e-12
-            allStage1Clearance = [allStage1Clearance; pointGeom.collisionDistances(:)]; %#ok<AGROW>
+            allStage1Clearance = [allStage1Clearance; clearanceVector]; %#ok<AGROW>
+            allStage1ObstacleClearance = [allStage1ObstacleClearance, clearanceVector]; %#ok<AGROW>
         end
         allDynState = [allDynState, pointState.dynAux.rDyn]; %#ok<AGROW>
         allDynGeom = [allDynGeom, pointGeom.dynAux.rDyn]; %#ok<AGROW>
@@ -106,6 +112,7 @@ for intervalIndex = 1:disc.numIntervals
 
         if sampleTime >= disc.durationApproach - 1e-12
             clearGeom = evaluateCylinderBoxClearance(q, scene);
+            stage2SideClearance = [stage2SideClearance, clearanceVector(2:3)]; %#ok<AGROW>
             stage2LateralError = [stage2LateralError, abs(clearGeom.pCylinder_B(2))]; %#ok<AGROW>
             stage2HeightError = [stage2HeightError, abs(clearGeom.pCylinder_B(3) - insertionLineHeightNumeric(clearGeom.pCylinder_B(1), scene))]; %#ok<AGROW>
             stage2AttitudeError = [stage2AttitudeError, max(abs(q(4:6) - scene.box.rpy))]; %#ok<AGROW>
@@ -120,6 +127,8 @@ end
 [minSigma, sigmaIndex] = min(allSigma(:));
 [maxCond, condIndex] = max(allCond(:));
 [minClearance, clearanceIndex] = min(allClearance(:));
+clearanceSampleIndex = ceil(clearanceIndex / numel(scene.hood.obstacles));
+clearanceObstacleIndex = mod(clearanceIndex - 1, numel(scene.hood.obstacles)) + 1;
 [maxKin, kinIndex] = max(abs(allKinResidual(:)));
 [maxAcc, accIndex] = max(abs(allAccelResidual(:)));
 [maxDynState, dynStateIndex] = max(abs(allDynState(:)));
@@ -133,9 +142,14 @@ denseReport.pathDefinition = 'path constraints use X_geom=[q_poly;qdot_poly] and
 denseReport.dynamicsDefinition = 'state dynamics use vdot_poly; geometric dynamics use qdd_poly';
 denseReport.maxPathViolation = max([allC(:); 0]);
 denseReport.minClearance = minClearance;
+denseReport.minObstacleClearance = min(allObstacleClearance, [], 2).';
 denseReport.minStage1Clearance = min(allStage1Clearance(:));
+denseReport.minStage1ObstacleClearance = min(allStage1ObstacleClearance, [], 2).';
 denseReport.finalGap = evaluateCylinderBoxClearance(traj.Q(:, end), scene).distance;
 denseReport.minClearanceFlatIndex = clearanceIndex;
+denseReport.minClearanceTime = allTime(clearanceSampleIndex);
+denseReport.minClearanceObstacleIndex = clearanceObstacleIndex;
+denseReport.minClearanceObstacleName = scene.hood.obstacles(clearanceObstacleIndex).name;
 denseReport.minLength = min(allLength(:));
 denseReport.maxLength = max(allLength(:));
 denseReport.maxAbsLd = max(abs(allLd(:)));
@@ -161,17 +175,21 @@ denseReport.stage2MaxLateralError = max([stage2LateralError(:); 0]);
 denseReport.stage2MaxHeightError = max([stage2HeightError(:); 0]);
 denseReport.stage2MaxAttitudeError = max([stage2AttitudeError(:); 0]);
 denseReport.stage2MinInsertionSpeed = min([stage2InsertionSpeed(:); inf]);
+denseReport.stage2SideMinClearance = min(stage2SideClearance, [], 2).';
 denseReport.stage2Passed = denseReport.stage2MaxLateralError <= 1e-5 && ...
     denseReport.stage2MaxHeightError <= 1e-5 && ...
     denseReport.stage2MaxAttitudeError <= 1e-5 && ...
-    denseReport.stage2MinInsertionSpeed >= -1e-7;
+    denseReport.stage2MinInsertionSpeed >= -1e-7 && ...
+    all(denseReport.stage2SideMinClearance >= scene.collision.safeDistance - 1e-8);
 denseReport.insertionContinuousReport = validateInsertionPhaseContinuousClearance(scene);
 denseReport.insertionContinuousPassed = denseReport.insertionContinuousReport.passed;
 forceUpperViolation = allForce - repmat(model.actuator.forceMax(:), 1, size(allForce, 2));
 forceLowerViolation = repmat(model.actuator.forceMin(:), 1, size(allForce, 2)) - allForce;
 denseReport.forceUpperViolationMax = max([forceUpperViolation(:); 0]);
 denseReport.forceLowerViolationMax = max([forceLowerViolation(:); 0]);
-denseReport.stage1ClearancePassed = denseReport.minStage1Clearance >= scene.collision.safeDistance - 1e-8;
+denseReport.stage1ClearanceThreshold = scene.collision.safeDistance * ones(1, numel(scene.hood.obstacles));
+denseReport.stage1ClearanceThreshold(1) = scene.collision.stage1ConstraintDistance;
+denseReport.stage1ClearancePassed = all(denseReport.minStage1ObstacleClearance >= denseReport.stage1ClearanceThreshold - 1e-8);
 denseReport.pathPassed = denseReport.maxPathViolation <= 1e-6 && denseReport.stage1ClearancePassed;
 denseReport.forcePassed = denseReport.forceUpperViolationMax <= 1e-6 && ...
     denseReport.forceLowerViolationMax <= 1e-6;

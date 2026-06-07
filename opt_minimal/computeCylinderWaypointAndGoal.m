@@ -34,4 +34,14 @@ info.pCylinderGoal_B = pCylinderGoal_B;
 info.pBox = pBox;
 info.RBox = RBox;
 info.pOffset = pOffset;
+if isfield(scene, 'hood') && isfield(scene.hood, 'roof')
+    roofLowerFaceZ_B = scene.hood.roof.center_B(3) - scene.hood.roof.halfSize(3);
+    info.roofLowerFaceZ_B = roofLowerFaceZ_B;
+    info.stage2RoofStartGap = roofLowerFaceZ_B - ...
+        (pCylinderWaypoint_B(3) + scene.objectCylinder.radius);
+    info.roofGoalGap = roofLowerFaceZ_B - ...
+        (pCylinderGoal_B(3) + scene.objectCylinder.radius);
+    info.sideGapAtGoal = scene.hood.innerHalfWidth - scene.objectCylinder.radius;
+    info.hoodObstacleNames = {scene.hood.obstacles.name};
+end
 end
