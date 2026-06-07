@@ -7,6 +7,7 @@
 | 文件 | 用途 | 状态 | 调用方/入口 | 处理原因 |
 |---|---|---|---|---|
 | `run_01_ihsid_trajectory.m` | standard IHSID 40x20 limited-memory 唯一主入口 | 活动 | 用户直接运行 | 由旧主入口改名并收敛为 IHSID |
+| `run_02_simscape_length_control.m` | 运行 IHSID 轨迹的 Simscape 纯长度反馈闭环 | 活动 | 用户直接运行 | 控制接入与硬验收入口 |
 | `README.md` | 运行、验收和 Simscape 接入说明 | 活动 | 维护者 | 替代旧 HS 总说明 |
 | `FILE_CATALOG.md` | 逐文件分类目录 | 活动 | 维护者 | 便于交接与后续更新 |
 
@@ -46,6 +47,10 @@
 | `validation/validateTrajectoryDenseIHSID.m` | IHSID 专用 dense 工程验收 | 活动 | 主入口 | 替代多方法验证分支 |
 | `validation/validateTrajectoryDenseImplicit.m` | 密集采样后验 | 活动 | IHSID 专用验证器 | 保留稳定 dense 计算 |
 | `integration/exportTrajectoryToSimscape.m` | 导出原始数组和 `references` timeseries | 活动 | 主入口、测试 | Simscape 接口 |
+| `integration/buildSimscapeLengthControlData.m` | 将优化参数映射为 Simscape 被控对象数据 | 活动 | 控制入口、测试 | 参数单一来源 |
+| `integration/configureSimscapeGravity.m` | 运行期启用或关闭 Simscape 重力 | 活动 | 控制入口、测试 | 保持模型文件通用 |
+| `integration/designSimscapeLengthController.m` | 线性化并整定六路对角 PIDF | 活动 | 控制入口、测试 | 纯长度反馈控制器 |
+| `integration/evaluateSimscapeLengthControl.m` | 解析闭环结果并执行硬验收 | 活动 | 控制入口、测试 | 控制结果验收 |
 | `tools/animateStewartTrajectory.m` | 离线动画 | 工具 | 主入口 | 保留维护价值 |
 | `tools/exportStewartMountingDiagram.m` | 装配图导出 | 工具 | 绘图流程 | 保留维护价值 |
 | `tools/plotOptResult.m` | 轨迹与约束检查图 | 工具 | 主入口 | 标准样例图来源 |
@@ -58,7 +63,9 @@
 | `tests/test_01_ihsid_contract.m` | 默认配置、打包解包和 NLP 尺寸 | 测试 | 测试入口 | 主线结构契约 |
 | `tests/test_02_simscape_export_contract.m` | `references.r/rL` 维度与时间契约 | 测试 | 测试入口 | Simscape 导出契约 |
 | `tests/test_03_directory_contract.m` | 根目录、unused 依赖和残留扫描 | 测试 | 测试入口 | 防止主线再次发散 |
-| `tests/test_04_simscape_model_contract.m` | 加载 `.slx` 并检查工作区变量 | 测试 | 测试入口 | 确认模型未需修改 |
+| `tests/test_04_simscape_model_contract.m` | 加载 `.slx` 并检查输入和控制力日志 | 测试 | 测试入口 | 模型接口契约 |
+| `tests/test_05_simscape_parameter_mapping.m` | 验证优化参数到 Simscape 的精确映射 | 测试 | 测试入口 | 参数映射契约 |
+| `tests/test_06_simscape_length_control_smoke.m` | 短时验证线性化、整定、仿真和解析 | 测试 | 测试入口 | 控制闭环冒烟测试 |
 
 ## 归档源码
 

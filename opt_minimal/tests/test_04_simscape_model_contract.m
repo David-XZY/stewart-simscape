@@ -12,4 +12,14 @@ blocks = find_system('stewart_platform_model', 'MatchFilter', @Simulink.match.al
 variables = cellfun(@(block) get_param(block, 'VariableName'), blocks, 'UniformOutput', false);
 assert(any(strcmp(variables, 'references.r')), '模型未读取 references.r。');
 assert(any(strcmp(variables, 'references.rL')), '模型未读取 references.rL。');
+
+toWorkspace = find_system('stewart_platform_model', ...
+    'MatchFilter', @Simulink.match.allVariants, 'BlockType', 'ToWorkspace', ...
+    'VariableName', 'simout');
+assert(isscalar(toWorkspace), '模型必须只有一个 simout 输出。');
+portHandles = get_param(toWorkspace{1}, 'PortHandles');
+lineHandle = get_param(portHandles.Inport, 'Line');
+sourceBlock = get_param(lineHandle, 'SrcBlockHandle');
+inputSignals = string(get_param(sourceBlock, 'InputSignalNames'));
+assert(any(inputSignals == "u"), 'simout 尚未记录控制器输出力 u。');
 end
