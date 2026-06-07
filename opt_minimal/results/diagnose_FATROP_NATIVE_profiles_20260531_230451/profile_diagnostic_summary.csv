@@ -1,3 +1,0 @@
-profile,N1,N2,numVariables,numEq,numIneq,ngMax,ngSum,solverStatus,solverSuccess,solveTime_s,objective,maxEqResidual,maxIneqViolation,maxPathViolation,maxRoofViolation,maxLeftSideViolation,maxRightSideViolation,maxInsertionMonotonicViolation,maxSoftInsertionResidual,maxSoftSideCollisionResidual,degenerateJacobianCount,failureReason
-full,4,2,193,78,469,85,475,1,0,91.3852457,13.8700829722237,0.501831423696682,0.538882835874594,0.327094909603367,0,0.538882835874594,0.150153292215657,0,0.0188047072079119,0,0,""
-full_masked_side,4,2,NaN,NaN,NaN,NaN,NaN,FAILED,0,0.1742593,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0,"无法识别的字段名称 ""Xmid""。"

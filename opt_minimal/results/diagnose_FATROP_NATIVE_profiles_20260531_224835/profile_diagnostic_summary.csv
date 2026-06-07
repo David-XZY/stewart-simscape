@@ -1,2 +1,0 @@
-profile,N1,N2,numVariables,numEq,numIneq,ngMax,ngSum,solverStatus,solverSuccess,solveTime_s,objective,maxEqResidual,maxIneqViolation,maxPathViolation,maxRoofViolation,maxLeftSideViolation,maxRightSideViolation,maxInsertionMonotonicViolation,maxSoftInsertionResidual,degenerateJacobianCount,failureReason
-full,4,2,193,78,469,85,475,1,0,32.0608778,11.6194118873757,7.24295666516579,0.538882835874594,0,0,0.538882835874594,0.150153292215657,0,0.0181199388648439,0,

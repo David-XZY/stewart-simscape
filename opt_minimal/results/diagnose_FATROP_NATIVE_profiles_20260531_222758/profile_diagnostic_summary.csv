@@ -1,3 +1,0 @@
-profile,N1,N2,numVariables,numEq,numIneq,ngMax,ngSum,solverStatus,solverSuccess,solveTime_s,objective,maxEqResidual,maxIneqViolation,degenerateJacobianCount,failureReason
-full,4,2,193,78,453,85,459,1,0,20.1129696,1050.11086120383,178.555866024571,55.972436027892,0,
-full_hard,4,2,193,98,469,95,495,1,0,36.2699184,121839.605212767,137.253508164952,654.095953555497,20,
