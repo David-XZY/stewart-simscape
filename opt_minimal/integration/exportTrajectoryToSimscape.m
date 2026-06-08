@@ -15,8 +15,8 @@ function [refs, references] = exportTrajectoryToSimscape(traj, scene, disc)
 %   references struct - 与现有 Simscape 模型 From Workspace 输入兼容的 timeseries。
 %
 % 核心公式：
-%   references.r 和 references.rL 的数据维度均为 N×6，分别表示相对初始位姿和
-%   相对初始支链长度。Simscape 模型中的测量量也是相对初始平衡位置定义。
+%   references.r、references.rL 和 references.uFF 的数据维度均为 N×6。
+%   r/rL 分别表示相对初始位姿和相对初始支链长度；uFF 是 IHSID 驱动力前馈。
 %
 % 在优化链路中的作用：
 %   保存结果 MAT 文件时同步保存 refs，方便后续离线接入 Simscape。
@@ -44,5 +44,6 @@ time = refs.t(:);
 references = struct();
 references.r = timeseries((refs.q - refs.q0).', time);
 references.rL = timeseries((refs.L - refs.L(:, 1)).', time);
+references.uFF = timeseries(refs.Fleg.', time);
 references.description = '供 stewart_platform_model.slx 使用的 IHSID 相对参考轨迹';
 end

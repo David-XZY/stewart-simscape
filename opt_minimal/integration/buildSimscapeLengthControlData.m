@@ -1,5 +1,5 @@
 function simscapeData = buildSimscapeLengthControlData(model, scene)
-% buildSimscapeLengthControlData - 将 IHSID 参数映射为纯长度反馈 Simscape 数据
+% buildSimscapeLengthControlData - 将 IHSID 参数映射为 Simscape 控制数据
 %
 % 说明：
 %   几何、质量、惯量和负载质心严格读取当前优化模型与场景。优化模型忽略腿部

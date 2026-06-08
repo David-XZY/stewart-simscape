@@ -1,7 +1,7 @@
-%% run_02_simscape_length_control - IHSID 轨迹的 Simscape 纯长度反馈闭环
-% 控制器只使用 references.rL-dLm，不使用优化力前馈或位姿反馈。
+%% run_02_simscape_length_control - IHSID 轨迹的 Simscape 力前馈加长度反馈闭环
+% 前馈使用 references.uFF=refs.Fleg；反馈只使用 references.rL-dLm，不引入位姿反馈。
 % 几何与刚体参数读取当前优化模型；杆件每段 1e-3 kg 仅为数值正则质量。
-clear; close all; clc;
+clearvars -except useForceFeedforward; close all; clc;
 
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
 optRoot = fullfile(projectRoot, 'opt_minimal');
@@ -15,11 +15,18 @@ sampleFile = fullfile(optRoot, 'examples', 'ihsid_40x20_limited_memory', ...
     'simscape_references.mat');
 sample = load(sampleFile, 'refs');
 refs = sample.refs;
+if ~exist('useForceFeedforward', 'var')
+    useForceFeedforward = true;
+end
 
 model = buildOptModelCustom();
 scene = buildCylinderBoxTransferScene(model);
 simscapeData = buildSimscapeLengthControlData(model, scene);
 [~, references] = exportTrajectoryToSimscape(trajectoryFromRefs(refs), scene, []);
+if ~useForceFeedforward
+    references.uFF = timeseries(zeros(size(references.uFF.Data)), ...
+        references.uFF.Time);
+end
 
 stewart = simscapeData.stewart;
 payload = simscapeData.payload;
@@ -43,10 +50,11 @@ diaryFile = fullfile(resultDir, ['console_', tag, '.txt']);
 diary(diaryFile);
 diaryCleanup = onCleanup(@() diary('off'));
 
-fprintf('\n===== Simscape 纯长度反馈闭环 =====\n');
+fprintf('\n===== Simscape 力前馈加长度反馈闭环 =====\n');
 fprintf('标准轨迹：%s\n', sampleFile);
 fprintf('仿真时长：%.3f s\n', refs.t(end));
 fprintf('腿部被动刚度/阻尼：K=0, C=0\n');
+fprintf('力前馈启用：%d，references.uFF = refs.Fleg\n', useForceFeedforward);
 fprintf('杆件每段数值正则质量：%.3e kg\n', ...
     simscapeData.approximations.strutSegmentRegularizationMass);
 
@@ -86,14 +94,15 @@ for candidateIndex = 1:numel(bandwidthCandidates)
 end
 
 if isempty(selectedIndex)
-    completed = find(arrayfun(@(item) ~isempty(item.report), attempts), 1, 'last');
+    completed = find(arrayfun(@(item) ~isempty(item.report), attempts));
     if isempty(completed)
         save(fullfile(resultDir, ['failed_', tag, '.mat']), ...
-            'model', 'scene', 'simscapeData', 'refs', 'references', 'attempts');
+            'model', 'scene', 'simscapeData', 'refs', 'references', ...
+            'attempts', 'useForceFeedforward');
         error('run_02_simscape_length_control:NoSimulationCompleted', ...
             '所有候选带宽均未完成仿真。');
     end
-    selectedIndex = completed;
+    selectedIndex = selectBestCompletedAttempt(attempts, completed, model);
 end
 
 selected = attempts(selectedIndex);
@@ -103,8 +112,9 @@ resultFile = fullfile(resultDir, ['result_', tag, '.mat']);
 summaryFile = fullfile(resultDir, ['summary_', tag, '.txt']);
 plotFile = fullfile(resultDir, ['tracking_', tag, '.png']);
 save(resultFile, 'model', 'scene', 'simscapeData', 'refs', 'references', ...
-    'attempts', 'selectedIndex', 'design', 'report');
-writeSummary(summaryFile, resultFile, report, design, simscapeData);
+    'attempts', 'selectedIndex', 'design', 'report', 'useForceFeedforward');
+writeSummary(summaryFile, resultFile, report, design, simscapeData, ...
+    useForceFeedforward);
 plotTracking(plotFile, report);
 
 fprintf('\n结果 MAT：%s\n', resultFile);
@@ -136,12 +146,33 @@ fprintf('硬验收：finite=%d, length=%d, force=%d, passed=%d\n', ...
     report.acceptance.forcePassed, report.passed);
 end
 
-function writeSummary(fileName, resultFile, report, design, simscapeData)
-% writeSummary - 保存纯长度反馈闭环摘要
+function selectedIndex = selectBestCompletedAttempt(attempts, completed, model)
+% selectBestCompletedAttempt - 失败时选择最接近硬验收的候选用于摘要
+scores = inf(size(completed));
+for itemIndex = 1:numel(completed)
+    attemptIndex = completed(itemIndex);
+    report = attempts(attemptIndex).report;
+    lengthLowViolation = max(model.lmin.' - report.actualAbsoluteLength, [], 'all');
+    lengthHighViolation = max(report.actualAbsoluteLength - model.lmax.', [], 'all');
+    forceLowViolation = max(model.actuator.forceMin.' - report.controlForce, [], 'all');
+    forceHighViolation = max(report.controlForce - model.actuator.forceMax.', [], 'all');
+    finitePenalty = double(~report.acceptance.finitePassed) * 1e6;
+    scores(itemIndex) = finitePenalty + max(0, lengthLowViolation) + ...
+        max(0, lengthHighViolation) + 1e-3 * max(0, forceLowViolation) + ...
+        1e-3 * max(0, forceHighViolation);
+end
+[~, bestLocalIndex] = min(scores);
+selectedIndex = completed(bestLocalIndex);
+end
+
+function writeSummary(fileName, resultFile, report, design, simscapeData, ...
+        useForceFeedforward)
+% writeSummary - 保存力前馈加长度反馈闭环摘要
 fid = fopen(fileName, 'w');
 cleanup = onCleanup(@() fclose(fid));
-fprintf(fid, 'IHSID Simscape pure length feedback summary\n');
+fprintf(fid, 'IHSID Simscape force-feedforward plus length-feedback summary\n');
 fprintf(fid, 'resultFile: %s\n', resultFile);
+fprintf(fid, 'useForceFeedforward: %d\n', useForceFeedforward);
 fprintf(fid, 'bandwidthHz: %.12g\n', design.bandwidthHz);
 fprintf(fid, 'stable: %d\n', design.stable);
 fprintf(fid, 'lowFrequencyRank: %d\n', design.lowFrequencyRank);
@@ -152,6 +183,8 @@ fprintf(fid, 'forcePassed: %d\n', report.acceptance.forcePassed);
 fprintf(fid, 'minAbsoluteLength: %.12e\n', report.metrics.minAbsoluteLength);
 fprintf(fid, 'maxAbsoluteLength: %.12e\n', report.metrics.maxAbsoluteLength);
 fprintf(fid, 'maxAbsControlForce: %.12e\n', report.metrics.maxAbsControlForce);
+fprintf(fid, 'maxAbsFeedbackForce: %.12e\n', report.metrics.maxAbsFeedbackForce);
+fprintf(fid, 'maxAbsFeedforwardForce: %.12e\n', report.metrics.maxAbsFeedforwardForce);
 fprintf(fid, 'maxAbsOptimizedForce: %.12e\n', report.metrics.maxAbsOptimizedForce);
 fprintf(fid, 'lengthRms: %s\n', mat2str(report.metrics.lengthRms, 12));
 fprintf(fid, 'lengthPeak: %s\n', mat2str(report.metrics.lengthPeak, 12));
@@ -194,7 +227,7 @@ yline(-2000, 'r--');
 grid on;
 xlabel('时间 (s)');
 ylabel('控制力 (N)');
-title('纯长度反馈控制力');
+title('总控制力（前馈+反馈）');
 
 exportgraphics(figureHandle, fileName, 'Resolution', 180);
 close(figureHandle);

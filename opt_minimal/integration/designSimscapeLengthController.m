@@ -1,8 +1,8 @@
 function design = designSimscapeLengthController(modelName, bandwidthHz)
 % designSimscapeLengthController - 线性化力到腿长对象并整定对角 PIDF
 %
-% 控制器仅使用腿长误差。对角控制保留现有 Reference-Tracking-L 结构，
-% 不引入优化力前馈或位姿反馈。
+% 反馈控制器仅使用腿长误差。线性化时会临时清零已知力前馈偏置，
+% 对角控制保留现有 Reference-Tracking-L 结构，不引入位姿反馈。
 
 arguments
     modelName char = 'stewart_platform_model'
@@ -11,9 +11,11 @@ end
 
 options = linearizeOptions;
 options.SampleTime = 0;
+feedforwardCleanup = zeroForceFeedforwardForLinearization(); %#ok<NASGU>
 io(1) = linio([modelName, '/Controller'], 1, 'openinput');
 io(2) = linio([modelName, '/Stewart Platform'], 1, 'openoutput', [], 'dLm');
 plant = linearize(modelName, io, options);
+clear feedforwardCleanup;
 
 if ~isequal(size(plant), [6, 6])
     error('designSimscapeLengthController:InvalidPlantSize', ...
@@ -44,5 +46,22 @@ design.stable = stable;
 if lowFrequencyRank ~= 6 || ~stable
     error('designSimscapeLengthController:DesignRejected', ...
         '长度控制对象低频秩为 %d，闭环稳定标志为 %d。', lowFrequencyRank, stable);
+end
+end
+
+function cleanup = zeroForceFeedforwardForLinearization()
+% zeroForceFeedforwardForLinearization - 在线性化反馈通道时移除已知前馈偏置
+cleanup = [];
+if evalin('base', 'exist(''references'', ''var'')')
+    references = evalin('base', 'references');
+    if isstruct(references) && isfield(references, 'uFF') ...
+            && isa(references.uFF, 'timeseries')
+        originalReferences = references;
+        zeroData = zeros(size(references.uFF.Data));
+        references.uFF = timeseries(zeroData, references.uFF.Time);
+        assignin('base', 'references', references);
+        cleanup = onCleanup(@() assignin('base', ...
+            'references', originalReferences));
+    end
 end
 end

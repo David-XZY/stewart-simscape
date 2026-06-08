@@ -12,6 +12,7 @@ blocks = find_system('stewart_platform_model', 'MatchFilter', @Simulink.match.al
 variables = cellfun(@(block) get_param(block, 'VariableName'), blocks, 'UniformOutput', false);
 assert(any(strcmp(variables, 'references.r')), '模型未读取 references.r。');
 assert(any(strcmp(variables, 'references.rL')), '模型未读取 references.rL。');
+assert(any(strcmp(variables, 'references.uFF')), '模型未读取 references.uFF。');
 
 toWorkspace = find_system('stewart_platform_model', ...
     'MatchFilter', @Simulink.match.allVariants, 'BlockType', 'ToWorkspace', ...
@@ -22,4 +23,6 @@ lineHandle = get_param(portHandles.Inport, 'Line');
 sourceBlock = get_param(lineHandle, 'SrcBlockHandle');
 inputSignals = string(get_param(sourceBlock, 'InputSignalNames'));
 assert(any(inputSignals == "u"), 'simout 尚未记录控制器输出力 u。');
+assert(any(inputSignals == "uFeedback"), 'simout 尚未记录长度反馈力 uFeedback。');
+assert(any(inputSignals == "uFF"), 'simout 尚未记录前馈力 uFF。');
 end

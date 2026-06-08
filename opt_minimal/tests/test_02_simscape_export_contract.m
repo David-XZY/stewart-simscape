@@ -17,12 +17,15 @@ disc = struct('durationApproach', 0.6, 'durationInsertion', 0.4, 'waypointNodeIn
 [refs, references] = exportTrajectoryToSimscape(traj, scene, disc);
 assert(isequal(size(references.r.Data), [nodeCount, 6]));
 assert(isequal(size(references.rL.Data), [nodeCount, 6]));
+assert(isequal(size(references.uFF.Data), [nodeCount, 6]));
 assert(isequal(references.r.Time, traj.t(:)));
 assert(isequal(references.rL.Time, traj.t(:)));
+assert(isequal(references.uFF.Time, traj.t(:)));
 assert(max(abs(references.r.Data(1, :))) == 0);
 assert(max(abs(references.rL.Data(1, :))) == 0);
 assert(isequal(references.r.Data, (traj.Q - scene.q0).'));
 assert(isequal(references.rL.Data, (traj.L - traj.L(:, 1)).'));
+assert(isequal(references.uFF.Data, traj.Unode.'));
 assert(isequal(refs.q, traj.Q));
 assert(isequal(refs.qd, traj.V));
 assert(isequal(refs.Fleg, traj.Unode));

@@ -18,10 +18,12 @@ refs.t = [0, 0.02];
 refs.q = repmat(model.qHome, 1, 2);
 refs.q0 = model.qHome;
 refs.L = repmat(homeLength, 1, 2);
-refs.Fleg = zeros(6, 2);
+refs.Fleg = repmat(inverseDynamicsCompositeRigidBody( ...
+    model.qHome, zeros(6, 1), zeros(6, 1), model), 1, 2);
 references = struct();
 references.r = timeseries(zeros(2, 6), refs.t(:));
 references.rL = timeseries(zeros(2, 6), refs.t(:));
+references.uFF = timeseries(refs.Fleg.', refs.t(:));
 
 assignin('base', 'stewart', simscapeData.stewart);
 assignin('base', 'payload', simscapeData.payload);
@@ -47,4 +49,6 @@ assert(design.stable);
 assert(design.lowFrequencyRank == 6);
 assert(report.acceptance.finitePassed);
 assert(~isempty(report.controlForce));
+assert(report.metrics.minAbsoluteLength > min(homeLength) - 1e-3);
+assert(report.metrics.maxAbsControlForce > 100);
 end
