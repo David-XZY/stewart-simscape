@@ -1,45 +1,53 @@
-%% run_02_simscape_length_control - IHSID 轨迹的 Simscape 力前馈加长度反馈闭环
-% 前馈使用 references.uFF=refs.Fleg；反馈只使用 references.rL-dLm，不引入位姿反馈。
-% 几何与刚体参数读取当前优化模型；杆件每段 1e-3 kg 仅为数值正则质量。
-clearvars -except useForceFeedforward; close all; clc;
+%% run_02_simscape_length_control - IHSID 轨迹的 Simscape 稳定跟踪入口
+% 默认自动运行 10 Hz 力前馈加长度反馈闭环。
+% 设置 simscapeRunMode='manual' 后，本脚本只准备并打开模型，由用户点击 Simulink 运行。
+clearvars -except simscapeRunMode simscapeTrajectoryFile simscapeBandwidthHz useForceFeedforward;
+close all; clc;
 
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
 optRoot = fullfile(projectRoot, 'opt_minimal');
-addpath(fullfile(projectRoot, 'src'));
-addpath(fullfile(projectRoot, 'matlab'));
-addpath(fullfile(projectRoot, 'simscape_subsystems'));
-addpath(fullfile(optRoot, 'core'));
 addpath(fullfile(optRoot, 'integration'));
 
-sampleFile = fullfile(optRoot, 'examples', 'ihsid_40x20_limited_memory', ...
-    'simscape_references.mat');
-sample = load(sampleFile, 'refs');
-refs = sample.refs;
+if ~exist('simscapeRunMode', 'var')
+    simscapeRunMode = 'auto';
+end
+if ~exist('simscapeTrajectoryFile', 'var')
+    simscapeTrajectoryFile = "";
+end
+if ~exist('simscapeBandwidthHz', 'var')
+    simscapeBandwidthHz = 10;
+end
 if ~exist('useForceFeedforward', 'var')
     useForceFeedforward = true;
 end
+simscapeRunMode = validatestring(simscapeRunMode, {'auto', 'manual'});
 
-model = buildOptModelCustom();
-scene = buildCylinderBoxTransferScene(model);
-simscapeData = buildSimscapeLengthControlData(model, scene);
-[~, references] = exportTrajectoryToSimscape(trajectoryFromRefs(refs), scene, []);
-if ~useForceFeedforward
-    references.uFF = timeseries(zeros(size(references.uFF.Data)), ...
-        references.uFF.Time);
+setup = prepareSimscapeLengthControl( ...
+    simscapeTrajectoryFile, simscapeBandwidthHz, useForceFeedforward);
+modelName = setup.modelName;
+refs = setup.refs;
+references = setup.references;
+model = setup.model;
+scene = setup.scene;
+simscapeData = setup.simscapeData;
+design = setup.design;
+
+fprintf('\n===== Simscape 力前馈加长度反馈稳定跟踪 =====\n');
+fprintf('运行模式：%s\n', simscapeRunMode);
+fprintf('参考轨迹：%s\n', setup.trajectoryFile);
+fprintf('仿真时长：%.3f s\n', refs.t(end));
+fprintf('反馈带宽：%.3f Hz\n', design.bandwidthHz);
+fprintf('力前馈启用：%d\n', useForceFeedforward);
+
+if strcmp(simscapeRunMode, 'manual')
+    open_system(modelName);
+    fprintf('\n模型已完成配置并打开。可调整基础工作区中的 references、Kl 等变量，\n');
+    fprintf('随后点击 Simulink 运行按钮。模型停止时间已设为 %.3f s。\n', refs.t(end));
+    fprintf('关闭模型时请勿保存运行期配置，以保持通用 SLX 不变。\n');
+    return;
 end
 
-stewart = simscapeData.stewart;
-payload = simscapeData.payload;
-ground = simscapeData.ground;
-disturbances = simscapeData.disturbances;
-controller = initializeController('type', 'open-loop');
-Kl = ss(zeros(6));
-
-modelName = 'stewart_platform_model';
-modelFile = fullfile(projectRoot, 'matlab', [modelName, '.slx']);
-load_system(modelFile);
 modelCleanup = onCleanup(@() closeModelWithoutSaving(modelName));
-
 resultDir = fullfile(optRoot, 'results');
 if ~exist(resultDir, 'dir')
     mkdir(resultDir);
@@ -50,159 +58,81 @@ diaryFile = fullfile(resultDir, ['console_', tag, '.txt']);
 diary(diaryFile);
 diaryCleanup = onCleanup(@() diary('off'));
 
-fprintf('\n===== Simscape 力前馈加长度反馈闭环 =====\n');
-fprintf('标准轨迹：%s\n', sampleFile);
-fprintf('仿真时长：%.3f s\n', refs.t(end));
-fprintf('腿部被动刚度/阻尼：K=0, C=0\n');
-fprintf('力前馈启用：%d，references.uFF = refs.Fleg\n', useForceFeedforward);
-fprintf('杆件每段数值正则质量：%.3e kg\n', ...
-    simscapeData.approximations.strutSegmentRegularizationMass);
+simulationOutput = sim(modelName, ...
+    'StopTime', num2str(refs.t(end), 16), ...
+    'ReturnWorkspaceOutputs', 'on');
+simout = simulationOutput.get('simout');
+report = evaluateSimscapeLengthControl(simout, refs, model, design);
+printSummary(report, design);
 
-bandwidthCandidates = [0.5, 0.25, 0.125];
-attempts = repmat(struct('bandwidthHz', [], 'design', [], 'report', [], ...
-    'errorMessage', ''), 1, numel(bandwidthCandidates));
-selectedIndex = [];
-
-for candidateIndex = 1:numel(bandwidthCandidates)
-    bandwidthHz = bandwidthCandidates(candidateIndex);
-    attempts(candidateIndex).bandwidthHz = bandwidthHz;
-    fprintf('\n--- 尝试闭环带宽 %.3f Hz ---\n', bandwidthHz);
-    try
-        configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', false);
-        controller = initializeController('type', 'open-loop');
-        design = designSimscapeLengthController(modelName, bandwidthHz);
-        Kl = design.Kl;
-        controller = simscapeData.controller;
-        configureSimscapeGravity(modelName, simscapeData.gravity);
-        simulationOutput = sim(modelName, ...
-            'StopTime', num2str(refs.t(end), 16), ...
-            'ReturnWorkspaceOutputs', 'on');
-        simout = simulationOutput.get('simout');
-        report = evaluateSimscapeLengthControl(simout, refs, model, design);
-        attempts(candidateIndex).design = design;
-        attempts(candidateIndex).report = report;
-        printAttemptSummary(report, design);
-        if report.passed
-            selectedIndex = candidateIndex;
-            break;
-        end
-    catch exception
-        attempts(candidateIndex).errorMessage = getReport(exception, 'extended', ...
-            'hyperlinks', 'off');
-        fprintf('带宽 %.3f Hz 失败：%s\n', bandwidthHz, exception.message);
-    end
-end
-
-if isempty(selectedIndex)
-    completed = find(arrayfun(@(item) ~isempty(item.report), attempts));
-    if isempty(completed)
-        save(fullfile(resultDir, ['failed_', tag, '.mat']), ...
-            'model', 'scene', 'simscapeData', 'refs', 'references', ...
-            'attempts', 'useForceFeedforward');
-        error('run_02_simscape_length_control:NoSimulationCompleted', ...
-            '所有候选带宽均未完成仿真。');
-    end
-    selectedIndex = selectBestCompletedAttempt(attempts, completed, model);
-end
-
-selected = attempts(selectedIndex);
-design = selected.design;
-report = selected.report;
 resultFile = fullfile(resultDir, ['result_', tag, '.mat']);
 summaryFile = fullfile(resultDir, ['summary_', tag, '.txt']);
 plotFile = fullfile(resultDir, ['tracking_', tag, '.png']);
 save(resultFile, 'model', 'scene', 'simscapeData', 'refs', 'references', ...
-    'attempts', 'selectedIndex', 'design', 'report', 'useForceFeedforward');
+    'design', 'report', 'useForceFeedforward', 'simscapeBandwidthHz', ...
+    'simscapeTrajectoryFile');
 writeSummary(summaryFile, resultFile, report, design, simscapeData, ...
-    useForceFeedforward);
+    setup.trajectoryFile, useForceFeedforward);
 plotTracking(plotFile, report);
 
 fprintf('\n结果 MAT：%s\n', resultFile);
 fprintf('摘要：%s\n', summaryFile);
 fprintf('检查图：%s\n', plotFile);
-fprintf('硬验收通过：%d\n', report.passed);
+fprintf('完整跟踪验收通过：%d\n', report.passed);
+clear modelCleanup;
 
 if ~report.passed
     error('run_02_simscape_length_control:AcceptanceFailed', ...
-        '候选带宽均未通过硬验收，已保存最后一次完整仿真结果。');
+        'Simscape 完整跟踪未通过验收，诊断结果已保存。');
 end
 
-function traj = trajectoryFromRefs(refs)
-% trajectoryFromRefs - 将标准样例原始数组恢复为导出接口输入
-traj = struct('t', refs.t, 'Q', refs.q, 'V', refs.qd, ...
-    'Unode', refs.Fleg, 'L', refs.L);
-end
-
-function printAttemptSummary(report, design)
-% printAttemptSummary - 输出单次闭环尝试摘要
+function printSummary(report, design)
+% printSummary - 输出完整跟踪验收摘要
 fprintf('线性闭环稳定=%d，低频秩=%d\n', design.stable, design.lowFrequencyRank);
-fprintf('腿长范围=[%.6f, %.6f] m，最大控制力=%.3f N\n', ...
+fprintf('腿长范围=[%.6f, %.6f] m，最大总控制力=%.3f N\n', ...
     report.metrics.minAbsoluteLength, report.metrics.maxAbsoluteLength, ...
     report.metrics.maxAbsControlForce);
-fprintf('长度误差 RMS 最大值=%.6e m，峰值最大值=%.6e m\n', ...
-    max(report.metrics.lengthRms), max(report.metrics.lengthPeak));
-fprintf('硬验收：finite=%d, length=%d, force=%d, passed=%d\n', ...
+fprintf('峰值误差：腿长=%.6e m，平移=%.6e m，转角=%.6e rad\n', ...
+    report.metrics.maxLengthTrackingPeak, report.metrics.maxTranslationPeak, ...
+    report.metrics.maxRotationPeak);
+fprintf('硬验收：finite=%d, length=%d, force=%d, tracking=%d, passed=%d\n', ...
     report.acceptance.finitePassed, report.acceptance.lengthPassed, ...
-    report.acceptance.forcePassed, report.passed);
-end
-
-function selectedIndex = selectBestCompletedAttempt(attempts, completed, model)
-% selectBestCompletedAttempt - 失败时选择最接近硬验收的候选用于摘要
-scores = inf(size(completed));
-for itemIndex = 1:numel(completed)
-    attemptIndex = completed(itemIndex);
-    report = attempts(attemptIndex).report;
-    lengthLowViolation = max(model.lmin.' - report.actualAbsoluteLength, [], 'all');
-    lengthHighViolation = max(report.actualAbsoluteLength - model.lmax.', [], 'all');
-    forceLowViolation = max(model.actuator.forceMin.' - report.controlForce, [], 'all');
-    forceHighViolation = max(report.controlForce - model.actuator.forceMax.', [], 'all');
-    finitePenalty = double(~report.acceptance.finitePassed) * 1e6;
-    scores(itemIndex) = finitePenalty + max(0, lengthLowViolation) + ...
-        max(0, lengthHighViolation) + 1e-3 * max(0, forceLowViolation) + ...
-        1e-3 * max(0, forceHighViolation);
-end
-[~, bestLocalIndex] = min(scores);
-selectedIndex = completed(bestLocalIndex);
+    report.acceptance.forcePassed, report.acceptance.trackingPassed, report.passed);
 end
 
 function writeSummary(fileName, resultFile, report, design, simscapeData, ...
-        useForceFeedforward)
-% writeSummary - 保存力前馈加长度反馈闭环摘要
+        trajectoryFile, useForceFeedforward)
+% writeSummary - 保存稳定跟踪摘要
 fid = fopen(fileName, 'w');
 cleanup = onCleanup(@() fclose(fid));
-fprintf(fid, 'IHSID Simscape force-feedforward plus length-feedback summary\n');
+fprintf(fid, 'IHSID Simscape stable tracking summary\n');
 fprintf(fid, 'resultFile: %s\n', resultFile);
+fprintf(fid, 'trajectoryFile: %s\n', trajectoryFile);
 fprintf(fid, 'useForceFeedforward: %d\n', useForceFeedforward);
 fprintf(fid, 'bandwidthHz: %.12g\n', design.bandwidthHz);
 fprintf(fid, 'stable: %d\n', design.stable);
 fprintf(fid, 'lowFrequencyRank: %d\n', design.lowFrequencyRank);
 fprintf(fid, 'passed: %d\n', report.passed);
-fprintf(fid, 'finitePassed: %d\n', report.acceptance.finitePassed);
-fprintf(fid, 'lengthPassed: %d\n', report.acceptance.lengthPassed);
-fprintf(fid, 'forcePassed: %d\n', report.acceptance.forcePassed);
-fprintf(fid, 'minAbsoluteLength: %.12e\n', report.metrics.minAbsoluteLength);
-fprintf(fid, 'maxAbsoluteLength: %.12e\n', report.metrics.maxAbsoluteLength);
-fprintf(fid, 'maxAbsControlForce: %.12e\n', report.metrics.maxAbsControlForce);
-fprintf(fid, 'maxAbsFeedbackForce: %.12e\n', report.metrics.maxAbsFeedbackForce);
-fprintf(fid, 'maxAbsFeedforwardForce: %.12e\n', report.metrics.maxAbsFeedforwardForce);
-fprintf(fid, 'maxAbsOptimizedForce: %.12e\n', report.metrics.maxAbsOptimizedForce);
-fprintf(fid, 'lengthRms: %s\n', mat2str(report.metrics.lengthRms, 12));
-fprintf(fid, 'lengthPeak: %s\n', mat2str(report.metrics.lengthPeak, 12));
-fprintf(fid, 'poseRms: %s\n', mat2str(report.metrics.poseRms, 12));
-fprintf(fid, 'posePeak: %s\n', mat2str(report.metrics.posePeak, 12));
-fprintf(fid, 'maxAbsLegSpeed: %.12e\n', report.metrics.maxAbsLegSpeed);
-fprintf(fid, 'maxAbsLegAcceleration: %.12e\n', report.metrics.maxAbsLegAcceleration);
+acceptanceFields = fieldnames(report.acceptance);
+for fieldIndex = 1:numel(acceptanceFields)
+    fieldName = acceptanceFields{fieldIndex};
+    fprintf(fid, '%s: %d\n', fieldName, report.acceptance.(fieldName));
+end
+metricFields = fieldnames(report.metrics);
+for fieldIndex = 1:numel(metricFields)
+    fieldName = metricFields{fieldIndex};
+    fprintf(fid, '%s: %s\n', fieldName, mat2str(report.metrics.(fieldName), 12));
+end
 fprintf(fid, 'mappingTotalMassError: %.12e\n', simscapeData.mapping.totalMassError);
 fprintf(fid, 'mappingComError: %.12e\n', simscapeData.mapping.comError);
 fprintf(fid, 'mappingInertiaError: %.12e\n', simscapeData.mapping.inertiaError);
-fprintf(fid, 'strutSegmentRegularizationMass: %.12e\n', ...
-    simscapeData.approximations.strutSegmentRegularizationMass);
 fprintf(fid, 'closedLoopPoles: %s\n', mat2str(design.closedLoopPoles, 12));
 end
 
 function plotTracking(fileName, report)
 % plotTracking - 输出长度、位姿和控制力检查图
-figureHandle = figure('Color', 'w', 'Position', [100, 100, 1200, 900]);
+figureHandle = figure('Color', 'w', 'Visible', 'off', ...
+    'Position', [100, 100, 1200, 900]);
 tiledlayout(3, 1, 'TileSpacing', 'compact');
 
 nexttile;
@@ -234,9 +164,8 @@ close(figureHandle);
 end
 
 function closeModelWithoutSaving(modelName)
-% closeModelWithoutSaving - 丢弃重力等运行期配置并关闭通用模型
+% closeModelWithoutSaving - 丢弃运行期配置并关闭通用模型
 if bdIsLoaded(modelName)
-    set_param(modelName, 'Dirty', 'off');
     close_system(modelName, 0);
 end
 end

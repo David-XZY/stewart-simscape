@@ -12,4 +12,5 @@
 
 Simscape 闭环由 `opt_minimal/run_02_simscape_length_control.m` 运行和诊断，当前控制结构为
 IHSID 力前馈加长度误差反馈：`u=uFF+uFeedback`。短时静态支撑测试已覆盖初始重力补偿；
-完整 7.5 秒轨迹仍以硬验收结果为准。
+默认 `10 Hz` 反馈控制器已用于完整 7.5 秒轨迹验收。设置 `simscapeRunMode='manual'`
+后，`run_02` 会准备并打开模型，由用户在 Simulink 中点击运行。

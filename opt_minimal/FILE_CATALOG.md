@@ -7,7 +7,7 @@
 | 文件 | 用途 | 状态 | 调用方/入口 | 处理原因 |
 |---|---|---|---|---|
 | `run_01_ihsid_trajectory.m` | standard IHSID 40x20 limited-memory 唯一主入口 | 活动 | 用户直接运行 | 由旧主入口改名并收敛为 IHSID |
-| `run_02_simscape_length_control.m` | 运行 IHSID 轨迹的 Simscape 力前馈加长度反馈闭环 | 活动 | 用户直接运行 | 控制接入与硬验收入口 |
+| `run_02_simscape_length_control.m` | 自动运行或手动准备 IHSID 轨迹的 Simscape 稳定跟踪 | 活动 | 用户直接运行 | 自动/手动控制接入与完整硬验收入口 |
 | `README.md` | 运行、验收和 Simscape 接入说明 | 活动 | 维护者 | 替代旧 HS 总说明 |
 | `FILE_CATALOG.md` | 逐文件分类目录 | 活动 | 维护者 | 便于交接与后续更新 |
 
@@ -47,6 +47,7 @@
 | `validation/validateTrajectoryDenseIHSID.m` | IHSID 专用 dense 工程验收 | 活动 | 主入口 | 替代多方法验证分支 |
 | `validation/validateTrajectoryDenseImplicit.m` | 密集采样后验 | 活动 | IHSID 专用验证器 | 保留稳定 dense 计算 |
 | `integration/exportTrajectoryToSimscape.m` | 导出原始数组和 `references` timeseries | 活动 | 主入口、测试 | Simscape 接口 |
+| `integration/prepareSimscapeLengthControl.m` | 统一加载轨迹、配置参数、整定控制器并准备模型 | 活动 | `run_02`、测试 | 保证自动与手动模式配置一致 |
 | `integration/buildSimscapeLengthControlData.m` | 将优化参数映射为 Simscape 被控对象数据 | 活动 | 控制入口、测试 | 参数单一来源 |
 | `integration/configureSimscapeGravity.m` | 运行期启用或关闭 Simscape 重力 | 活动 | 控制入口、测试 | 保持模型文件通用 |
 | `integration/designSimscapeLengthController.m` | 线性化并整定六路对角 PIDF | 活动 | 控制入口、测试 | 长度误差反馈控制器 |
@@ -66,6 +67,8 @@
 | `tests/test_04_simscape_model_contract.m` | 加载 `.slx` 并检查输入和控制力日志 | 测试 | 测试入口 | 模型接口契约 |
 | `tests/test_05_simscape_parameter_mapping.m` | 验证优化参数到 Simscape 的精确映射 | 测试 | 测试入口 | 参数映射契约 |
 | `tests/test_06_simscape_length_control_smoke.m` | 短时验证线性化、整定、仿真和解析 | 测试 | 测试入口 | 控制闭环冒烟测试 |
+| `tests/test_07_simscape_preparation_contract.m` | 验证统一准备接口、轨迹校验和手动模式 | 测试 | 测试入口 | 自动/手动模式契约 |
+| `tests/test_08_simscape_full_tracking.m` | 验证默认 10 Hz 完整轨迹跟踪硬验收 | 测试 | 测试入口 | 防止完整轨迹再次失控 |
 
 ## 归档源码
 

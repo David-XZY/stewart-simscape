@@ -6,6 +6,8 @@ testFiles = {
     'test_04_simscape_model_contract'
     'test_05_simscape_parameter_mapping'
     'test_06_simscape_length_control_smoke'
+    'test_07_simscape_preparation_contract'
+    'test_08_simscape_full_tracking'
 };
 
 for index = 1:numel(testFiles)
