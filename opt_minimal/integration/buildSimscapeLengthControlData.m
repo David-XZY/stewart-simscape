@@ -1,4 +1,4 @@
-function simscapeData = buildSimscapeLengthControlData(model, scene)
+function simscapeData = buildSimscapeLengthControlData(model, scene, controlMode)
 % buildSimscapeLengthControlData - 将 IHSID 参数映射为 Simscape 控制数据
 %
 % 说明：
@@ -9,6 +9,7 @@ function simscapeData = buildSimscapeLengthControlData(model, scene)
 arguments
     model struct
     scene struct
+    controlMode char {mustBeMember(controlMode, {'force', 'length-cascade'})} = 'force'
 end
 
 regularizationMass = 1e-3;
@@ -55,7 +56,12 @@ payload = initializePayload( ...
     'm', objectMass, ...
     'I', payloadInertia);
 ground = initializeGround('type', 'none');
-controller = initializeController('type', 'ref-track-L');
+if strcmp(controlMode, 'length-cascade')
+    stewart.actuators.type = 5;
+    controller = initializeController('type', 'length-cascade');
+else
+    controller = initializeController('type', 'ref-track-L');
+end
 disturbances = initializeDisturbances();
 
 mapping = computeMappingReport(stewart, payload, model);
@@ -65,6 +71,7 @@ simscapeData.stewart = stewart;
 simscapeData.payload = payload;
 simscapeData.ground = ground;
 simscapeData.controller = controller;
+simscapeData.controlMode = controlMode;
 simscapeData.disturbances = disturbances;
 simscapeData.gravity = model.g;
 simscapeData.mapping = mapping;

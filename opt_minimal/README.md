@@ -4,6 +4,8 @@
 主入口为 `run_01_ihsid_trajectory.m`，仅当求解器成功且工程后验通过时，才发布 Simscape 参考轨迹。
 Simscape 验证入口为 `run_02_simscape_length_control.m`，采用 IHSID 力前馈加长度误差反馈，
 默认反馈带宽为已通过完整轨迹验收的 `10 Hz`。
+纯长度验证入口为 `run_03_simscape_length_cascade_control.m`，仅使用 `t/q/qd`，
+关闭重力并采用位置 P + 速度 PIDF 串级控制。
 
 ## 快速运行
 
@@ -12,6 +14,7 @@ Simscape 验证入口为 `run_02_simscape_length_control.m`，采用 IHSID 力�
 ```matlab
 run('opt_minimal/run_01_ihsid_trajectory.m')
 run('opt_minimal/run_02_simscape_length_control.m')
+run('opt_minimal/run_03_simscape_length_cascade_control.m')
 ```
 
 运行期产物写入 `opt_minimal/results/`，该目录除 `.gitkeep` 外均被 Git 忽略。
@@ -32,6 +35,24 @@ run('opt_minimal/run_02_simscape_length_control.m')
 
 脚本会准备基础工作区变量、配置重力与 `10 Hz` 控制器、设置停止时间并打开模型。
 用户可调整 `references`、`Kl` 等变量后点击运行。关闭模型时不要保存运行期配置。
+
+`run_03` 默认以 `10 ms` 采样周期运行，使用 `pidtune` 在仿真前逐腿整定 `10 Hz`
+速度 PIDF 和 `2 Hz` 位置 P。它只读取轨迹中的 `refs.t/q/qd`，由 IK 和 Jacobian
+生成 `references.rL/rLd`，不读取 `refs.L/Fleg` 或 `references.uFF`。手动模式为：
+
+```matlab
+lengthCascadeRunMode = 'manual';
+run('opt_minimal/run_03_simscape_length_cascade_control.m')
+```
+
+可在保留 `10 Hz / 2 Hz` 自动整定带宽的同时，分别缩放位置环 P 和速度环 PIDF：
+
+```matlab
+lengthCascadeConfigOverrides = struct( ...
+    'positionGainScale', 1.0, ...
+    'velocityGainScale', 0.7);
+run('opt_minimal/run_03_simscape_length_cascade_control.m')
+```
 
 ## 输出与验收
 
@@ -84,3 +105,16 @@ Simscape；腿刚度与阻尼按优化假设设为零，每段杆件保留 `1e-3
 
 Simscape 尚未包含真实腿刚度、阻尼、传感器噪声、延迟、执行器饱和和障碍物。
 因此被控对象验证不能替代现有 IHSID 碰撞与工程后验。
+
+## Simscape 纯长度串级控制
+
+`controller.type=8` 选择 `Length-Cascade`，`stewart.actuators.type=5` 选择
+`Length-Servo`。长度执行器使用 Motion Provided by Input 的 Prismatic Joint，
+由一阶速度对象积分生成带导数的运动轮廓；速度 PIDF 输出同时应用速度饱和、
+tracking anti-windup 和加速度斜率限制。长度模式关闭重力，顶层前馈为零，
+不输入、不读取、不验收驱动力。为避免改动公共总线尺寸，长度执行器仅在
+`type=5` 分支中复用旧 `Taum` 总线槽传递关节速度；该信号在长度模式中不是力。
+
+标准全轨迹硬验收要求信号有限、自动整定闭环稳定、腿长/腿速/腿加速度满足约束，
+且峰值腿长误差不超过 `5 mm`、平移误差不超过 `10 mm`、转角误差不超过 `1 deg`。
+终点腿长误差 `0.1 mm` 仅作为诊断目标，不决定硬通过。

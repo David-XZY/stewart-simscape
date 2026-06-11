@@ -2,8 +2,9 @@ function test_03_directory_contract
 % test_03_directory_contract - 验证根目录、活动依赖与过时方法残留
 optRoot = fileparts(fileparts(mfilename('fullpath')));
 rootMFiles = dir(fullfile(optRoot, '*.m'));
-expectedEntries = {'run_01_ihsid_trajectory.m', 'run_02_simscape_length_control.m'};
-assert(isequal({rootMFiles.name}, expectedEntries), '根目录只能保留轨迹与控制两个主入口。');
+expectedEntries = {'run_01_ihsid_trajectory.m', 'run_02_simscape_length_control.m', ...
+    'run_03_simscape_length_cascade_control.m'};
+assert(isequal({rootMFiles.name}, expectedEntries), '根目录只能保留轨迹与两种控制主入口。');
 
 activeDirs = {'core', 'ihsid', 'validation', 'integration', 'tools'};
 for index = 1:numel(activeDirs)

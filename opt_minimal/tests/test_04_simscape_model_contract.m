@@ -13,6 +13,9 @@ variables = cellfun(@(block) get_param(block, 'VariableName'), blocks, 'UniformO
 assert(any(strcmp(variables, 'references.r')), '模型未读取 references.r。');
 assert(any(strcmp(variables, 'references.rL')), '模型未读取 references.rL。');
 assert(any(strcmp(variables, 'references.uFF')), '模型未读取 references.uFF。');
+variantSource = find_system('stewart_platform_model', 'SearchDepth', 1, ...
+    'BlockType', 'VariantSource');
+assert(isscalar(variantSource), '顶层缺少执行器前馈 Variant Source。');
 
 toWorkspace = find_system('stewart_platform_model', ...
     'MatchFilter', @Simulink.match.allVariants, 'BlockType', 'ToWorkspace', ...

@@ -8,6 +8,14 @@ testFiles = {
     'test_06_simscape_length_control_smoke'
     'test_07_simscape_preparation_contract'
     'test_08_simscape_full_tracking'
+    'test_09_length_cascade_reference_contract'
+    'test_10_length_cascade_design_contract'
+    'test_11_length_cascade_preparation_contract'
+    'test_12_length_cascade_model_contract'
+    'test_13_length_cascade_evaluation_contract'
+    'test_14_length_cascade_smoke'
+    'test_15_length_cascade_full_tracking'
+    'test_16_meeting_figure_export_contract'
 };
 
 for index = 1:numel(testFiles)

@@ -52,16 +52,26 @@ end
 function cleanup = zeroForceFeedforwardForLinearization()
 % zeroForceFeedforwardForLinearization - 在线性化反馈通道时移除已知前馈偏置
 cleanup = [];
+restoreState = struct('hasReferences', false, 'references', []);
 if evalin('base', 'exist(''references'', ''var'')')
     references = evalin('base', 'references');
     if isstruct(references) && isfield(references, 'uFF') ...
             && isa(references.uFF, 'timeseries')
-        originalReferences = references;
+        restoreState.hasReferences = true;
+        restoreState.references = references;
         zeroData = zeros(size(references.uFF.Data));
         references.uFF = timeseries(zeroData, references.uFF.Time);
         assignin('base', 'references', references);
-        cleanup = onCleanup(@() assignin('base', ...
-            'references', originalReferences));
     end
+end
+if restoreState.hasReferences
+    cleanup = onCleanup(@() restoreForceFeedforward(restoreState));
+end
+end
+
+function restoreForceFeedforward(restoreState)
+% restoreForceFeedforward - 恢复线性化前的力前馈变量
+if restoreState.hasReferences
+    assignin('base', 'references', restoreState.references);
 end
 end

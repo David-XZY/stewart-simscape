@@ -8,6 +8,7 @@
 |---|---|---|---|---|
 | `run_01_ihsid_trajectory.m` | standard IHSID 40x20 limited-memory 唯一主入口 | 活动 | 用户直接运行 | 由旧主入口改名并收敛为 IHSID |
 | `run_02_simscape_length_control.m` | 自动运行或手动准备 IHSID 轨迹的 Simscape 稳定跟踪 | 活动 | 用户直接运行 | 自动/手动控制接入与完整硬验收入口 |
+| `run_03_simscape_length_cascade_control.m` | 自动运行或手动准备纯长度串级控制 | 活动 | 用户直接运行 | 仅依赖 q/qd 的长度伺服与完整硬验收入口 |
 | `README.md` | 运行、验收和 Simscape 接入说明 | 活动 | 维护者 | 替代旧 HS 总说明 |
 | `FILE_CATALOG.md` | 逐文件分类目录 | 活动 | 维护者 | 便于交接与后续更新 |
 
@@ -52,8 +53,15 @@
 | `integration/configureSimscapeGravity.m` | 运行期启用或关闭 Simscape 重力 | 活动 | 控制入口、测试 | 保持模型文件通用 |
 | `integration/designSimscapeLengthController.m` | 线性化并整定六路对角 PIDF | 活动 | 控制入口、测试 | 长度误差反馈控制器 |
 | `integration/evaluateSimscapeLengthControl.m` | 解析闭环结果并执行硬验收 | 活动 | 控制入口、测试 | 控制结果验收 |
+| `integration/generateSimscapeLengthCascadeReferences.m` | 由 q/qd 生成腿长与腿速参考 | 活动 | `run_03`、测试 | 移除长度模式的力轨迹依赖 |
+| `integration/makeSimscapeLengthCascadeConfig.m` | 构建纯长度串级统一配置 | 活动 | `run_03`、测试 | 采样、对象与约束参数单一来源 |
+| `integration/designSimscapeLengthCascadeController.m` | 逐腿自动整定位置 P 与速度 PIDF | 活动 | `run_03`、测试 | 仿真前自整定 |
+| `integration/prepareSimscapeLengthCascadeControl.m` | 准备纯长度 Variant、参考与基础工作区 | 活动 | `run_03`、测试 | 自动/手动模式统一入口 |
+| `integration/evaluateSimscapeLengthCascadeControl.m` | 解析纯长度日志并执行无力指标硬验收 | 活动 | `run_03`、测试 | 纯长度控制结果验收 |
+| `integration/installSimscapeLengthCascadeVariants.m` | 在现有 SLX 中安装长度控制与执行器 Variant | 活动 | 模型维护 | 保持 SLX 增量修改可复现 |
 | `tools/animateStewartTrajectory.m` | 离线动画 | 工具 | 主入口 | 保留维护价值 |
 | `tools/exportStewartMountingDiagram.m` | 装配图导出 | 工具 | 绘图流程 | 保留维护价值 |
+| `tools/exportRun02Run03MeetingFigures.m` | 导出 Run02/Run03 组会总览与对比 FIG/PNG | 工具 | 用户直接调用 | 汇报图可复现导出 |
 | `tools/plotOptResult.m` | 轨迹与约束检查图 | 工具 | 主入口 | 标准样例图来源 |
 
 ## 活动测试
@@ -69,6 +77,10 @@
 | `tests/test_06_simscape_length_control_smoke.m` | 短时验证线性化、整定、仿真和解析 | 测试 | 测试入口 | 控制闭环冒烟测试 |
 | `tests/test_07_simscape_preparation_contract.m` | 验证统一准备接口、轨迹校验和手动模式 | 测试 | 测试入口 | 自动/手动模式契约 |
 | `tests/test_08_simscape_full_tracking.m` | 验证默认 10 Hz 完整轨迹跟踪硬验收 | 测试 | 测试入口 | 防止完整轨迹再次失控 |
+| `tests/test_09_length_cascade_reference_contract.m` 至 `test_13_length_cascade_evaluation_contract.m` | 验证纯 q/qd 参考、整定、准备、SLX 与验收契约 | 测试 | 测试入口 | 纯长度控制结构契约 |
+| `tests/test_14_length_cascade_smoke.m` | 短时验证纯长度 Variant 可运行 | 测试 | 测试入口 | 纯长度冒烟测试 |
+| `tests/test_15_length_cascade_full_tracking.m` | 验证标准全轨迹纯长度硬验收 | 测试 | 测试入口 | 防止纯长度轨迹回归 |
+| `tests/test_16_meeting_figure_export_contract.m` | 验证三组组会 FIG/PNG 可重新打开并满足 16:9 输出 | 测试 | 测试入口 | 汇报图导出契约 |
 
 ## 归档源码
 

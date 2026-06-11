@@ -23,6 +23,7 @@ refs.Fleg = repmat(inverseDynamicsCompositeRigidBody( ...
 references = struct();
 references.r = timeseries(zeros(2, 6), refs.t(:));
 references.rL = timeseries(zeros(2, 6), refs.t(:));
+references.rLd = timeseries(zeros(2, 6), refs.t(:));
 references.uFF = timeseries(refs.Fleg.', refs.t(:));
 
 assignin('base', 'stewart', simscapeData.stewart);

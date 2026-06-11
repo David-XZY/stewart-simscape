@@ -1,0 +1,236 @@
+function installSimscapeLengthCascadeVariants(projectRoot)
+% installSimscapeLengthCascadeVariants - 在现有 SLX 中安装纯长度串级 Variant
+arguments
+    projectRoot {mustBeTextScalar} = ""
+end
+
+if strlength(string(projectRoot)) == 0
+    projectRoot = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+end
+projectRoot = char(projectRoot);
+installControllerVariant(projectRoot);
+installActuatorVariant(projectRoot);
+end
+
+function installControllerVariant(projectRoot)
+modelFile = fullfile(projectRoot, 'matlab', 'stewart_platform_model.slx');
+load_system(modelFile);
+cleanup = onCleanup(@() close_system('stewart_platform_model', 0));
+forceFeedforward = 'stewart_platform_model/Force Feedforward';
+set_param(forceFeedforward, 'VariableName', 'references.uFF');
+feedforwardVariant = 'stewart_platform_model/Actuator Feedforward Variant';
+if ~blockExists(feedforwardVariant)
+    forceLine = get_param(forceFeedforward, 'LineHandles');
+    destinations = get_param(forceLine.Outport, 'DstPortHandle');
+    delete_line(forceLine.Outport);
+    add_block('simulink/Sources/Constant', ...
+        'stewart_platform_model/Zero Length Feedforward', ...
+        'Value', 'zeros(6,1)', 'Position', [970 610 1130 640]);
+    add_block('simulink/Signal Routing/Variant Source', feedforwardVariant, ...
+        'VariantControls', ...
+        {'stewart.actuators.type ~= 5', 'stewart.actuators.type == 5'}, ...
+        'Position', [1160 555 1210 640]);
+    add_line('stewart_platform_model', ...
+        'Force Feedforward/1', 'Actuator Feedforward Variant/1');
+    add_line('stewart_platform_model', ...
+        'Zero Length Feedforward/1', 'Actuator Feedforward Variant/2');
+    variantLine = add_line('stewart_platform_model', ...
+        get_param(feedforwardVariant, 'PortHandles').Outport(1), destinations(1));
+    for destinationIndex = 2:numel(destinations)
+        add_line('stewart_platform_model', ...
+            get_param(feedforwardVariant, 'PortHandles').Outport(1), ...
+            destinations(destinationIndex));
+    end
+    set_param(variantLine, 'Name', 'uFF');
+end
+referenceBlock = 'stewart_platform_model/Reference';
+speedReference = [referenceBlock, '/Length Speed Reference'];
+if ~blockExists(speedReference)
+    add_block('simulink/Sources/From Workspace', speedReference, ...
+        'VariableName', 'references.rLd', ...
+        'Position', [55 175 170 205]);
+    set_param([referenceBlock, '/Bus Creator'], 'Inputs', '3');
+    speedLine = add_line(referenceBlock, ...
+        'Length Speed Reference/1', 'Bus Creator/3');
+    set_param(speedLine, 'Name', 'rLd');
+end
+speedLine = get_param(speedReference, 'LineHandles');
+set_param(speedLine.Outport, 'Name', 'rLd');
+
+source = 'stewart_platform_model/Controller/Reference-Tracking-L';
+target = 'stewart_platform_model/Controller/Length-Cascade';
+if blockExists(target)
+    delete_block(target);
+end
+add_block(source, target, 'CopyOption', 'nolink');
+set_param(target, 'VariantControl', 'controller.type == 8');
+Simulink.SubSystem.deleteContents(target);
+
+add_block('simulink/Ports & Subsystems/In1', [target, '/r'], ...
+    'Port', '2', 'Position', [30 185 60 205]);
+add_block('simulink/Ports & Subsystems/In1', [target, '/y'], ...
+    'Port', '1', 'Position', [30 45 60 65]);
+add_block('simulink/Signal Routing/Bus Selector', [target, '/Actual Length'], ...
+    'OutputSignals', 'dLm,Taum', 'Position', [95 35 135 85]);
+add_block('simulink/Signal Routing/Bus Selector', [target, '/Length Reference'], ...
+    'OutputSignals', 'rL,rLd', 'Position', [95 155 135 225]);
+add_block('simulink/Math Operations/Sum', [target, '/Position Error'], ...
+    'Inputs', '+-', 'Position', [185 95 210 125]);
+add_block('simulink/Math Operations/Gain', [target, '/Position P'], ...
+    'Gain', 'diag(lengthCascadeDesign.Kpos)', ...
+    'Multiplication', 'Matrix(K*u)', 'Position', [245 90 335 130]);
+add_block('simulink/Math Operations/Sum', [target, '/Speed Command'], ...
+    'Inputs', '++', 'Position', [375 145 400 175]);
+add_block('simulink/Discontinuities/Saturation', [target, '/Speed Limit'], ...
+    'UpperLimit', 'lengthCascadeConfig.speedLimit', ...
+    'LowerLimit', '-lengthCascadeConfig.speedLimit', ...
+    'Position', [440 140 520 180]);
+add_block('simulink/Discontinuities/Rate Limiter', [target, '/Acceleration Limit'], ...
+    'RisingSlewLimit', 'lengthCascadeConfig.accelerationLimit', ...
+    'FallingSlewLimit', '-lengthCascadeConfig.accelerationLimit', ...
+    'InitialCondition', 'zeros(6,1)', 'Position', [555 140 645 180]);
+add_block('simulink/Math Operations/Sum', [target, '/Speed Error'], ...
+    'Inputs', '+-', 'Position', [690 90 715 120]);
+add_block('simulink/Discrete/Discrete PID Controller', [target, '/Velocity PIDF'], ...
+    'Controller', 'PID', 'TimeDomain', 'Discrete-time', ...
+    'IntegratorMethod', 'Forward Euler', ...
+    'FilterMethod', 'Forward Euler', ...
+    'P', 'lengthCascadeDesign.velocityKp(1)', ...
+    'I', 'lengthCascadeDesign.velocityKi(1)', ...
+    'D', 'lengthCascadeDesign.velocityKd(1)', ...
+    'N', 'lengthCascadeDesign.velocityN(1)', ...
+    'SampleTime', 'lengthCascadeConfig.sampleTime', ...
+    'LimitOutput', 'on', ...
+    'UpperSaturationLimit', 'lengthCascadeConfig.speedLimit(1)', ...
+    'LowerSaturationLimit', '-lengthCascadeConfig.speedLimit(1)', ...
+    'AntiWindupMode', 'back-calculation', ...
+    'TrackingMode', 'on', ...
+    'Kt', '1/lengthCascadeConfig.sampleTime', ...
+    'Position', [755 80 855 130]);
+add_block('simulink/Discontinuities/Rate Limiter', [target, '/Servo Acceleration Limit'], ...
+    'RisingSlewLimit', 'lengthCascadeConfig.accelerationLimit', ...
+    'FallingSlewLimit', '-lengthCascadeConfig.accelerationLimit', ...
+    'InitialCondition', 'zeros(6,1)', 'Position', [865 80 930 130]);
+add_block('simulink/Ports & Subsystems/Out1', [target, '/u'], ...
+    'Port', '1', 'Position', [960 95 990 115]);
+
+add_line(target, 'y/1', 'Actual Length/1');
+add_line(target, 'r/1', 'Length Reference/1');
+add_line(target, 'Actual Length/1', 'Position Error/2');
+add_line(target, 'Length Reference/1', 'Position Error/1');
+add_line(target, 'Length Reference/2', 'Speed Command/1');
+add_line(target, 'Position Error/1', 'Position P/1');
+add_line(target, 'Position P/1', 'Speed Command/2');
+add_line(target, 'Speed Command/1', 'Speed Limit/1');
+add_line(target, 'Speed Limit/1', 'Acceleration Limit/1');
+add_line(target, 'Acceleration Limit/1', 'Speed Error/1');
+add_line(target, 'Actual Length/2', 'Speed Error/2');
+add_line(target, 'Speed Error/1', 'Velocity PIDF/1');
+add_line(target, 'Velocity PIDF/1', 'Servo Acceleration Limit/1');
+limitedCommandLine = add_line(target, 'Servo Acceleration Limit/1', 'u/1');
+add_line(target, get_param(limitedCommandLine, 'SrcPortHandle'), ...
+    get_param([target, '/Velocity PIDF'], 'PortHandles').Inport(2));
+
+save_system('stewart_platform_model', modelFile);
+clear cleanup;
+end
+
+function installActuatorVariant(projectRoot)
+modelFile = fullfile(projectRoot, 'simscape_subsystems', 'stewart_strut.slx');
+load_system(modelFile);
+cleanup = onCleanup(@() close_system('stewart_strut', 0));
+set_param('stewart_strut/Fmi', 'Unit', 'inherit');
+
+source = 'stewart_strut/Actuator/Classical';
+target = 'stewart_strut/Actuator/Length-Servo';
+if blockExists(target)
+    delete_block(target);
+end
+add_block(source, target, 'CopyOption', 'nolink');
+set_param(target, 'VariantControl', 'stewart.actuators.type==5');
+
+gainBlock = [target, '/Gain'];
+converter = find_system(target, 'SearchDepth', 1, ...
+    'LookUnderMasks', 'all', 'MaskType', 'Simulink-PS Converter');
+joint = find_system(target, 'SearchDepth', 1, ...
+    'LookUnderMasks', 'all', 'MaskType', 'Prismatic Joint');
+delete_line(get_param(gainBlock, 'LineHandles').Outport);
+delete_block(gainBlock);
+
+set_param(joint{1}, ...
+    'TorqueActuationMode', 'ComputedTorque', ...
+    'MotionActuationMode', 'InputMotion', ...
+    'SenseVelocity', 'on', ...
+    'SenseTorqueForce', 'off');
+set_param(converter{1}, ...
+    'Unit', 'm', ...
+    'FilteringAndDerivatives', 'filter', ...
+    'SimscapeFilterOrder', '2', ...
+    'InputFilterTimeConstant', 'lengthCascadeConfig.sampleTime');
+
+add_block('simulink/Discrete/Discrete Transfer Fcn', [target, '/Velocity Plant'], ...
+    'Numerator', '[lengthCascadeConfig.velocityPlantGain(i)*(1-exp(-lengthCascadeConfig.sampleTime/lengthCascadeConfig.velocityPlantTimeConstant(i)))]', ...
+    'Denominator', '[1 -exp(-lengthCascadeConfig.sampleTime/lengthCascadeConfig.velocityPlantTimeConstant(i))]', ...
+    'SampleTime', 'lengthCascadeConfig.sampleTime', ...
+    'Position', [160 230 275 270]);
+add_block('simulink/Discrete/Discrete-Time Integrator', [target, '/Position Profile'], ...
+    'IntegratorMethod', 'Forward Euler', ...
+    'gainval', '1', ...
+    'InitialCondition', '0', ...
+    'Position', [315 230 405 270]);
+add_block('simulink/Math Operations/Gain', [target, '/Motion Sign'], ...
+    'Gain', '1', 'Position', [430 230 475 270]);
+
+deleteConnectedLines(converter{1});
+add_line(target, 'Fi/1', 'Velocity Plant/1');
+add_line(target, 'Velocity Plant/1', 'Position Profile/1');
+add_line(target, 'Position Profile/1', 'Motion Sign/1');
+add_line(target, 'Motion Sign/1', ...
+    [get_param(converter{1}, 'Name'), '/1']);
+converterPorts = get_param(converter{1}, 'PortHandles');
+jointPorts = get_param(joint{1}, 'PortHandles');
+add_line(target, converterPorts.RConn(1), jointPorts.LConn(end));
+forceConverter = [target, '/PS-Simulink Converter1'];
+set_param(forceConverter, 'Unit', 'm/s');
+forcePhysicalLines = get_param(forceConverter, 'LineHandles');
+if forcePhysicalLines.LConn ~= -1
+    delete_line(forcePhysicalLines.LConn);
+end
+jointPorts = get_param(joint{1}, 'PortHandles');
+forceConverterPorts = get_param(forceConverter, 'PortHandles');
+add_line(target, jointPorts.RConn(3), forceConverterPorts.LConn(1));
+forceOutput = get_param(forceConverter, 'LineHandles');
+forceInput = get_param([target, '/Fmi'], 'LineHandles');
+if forceInput.Inport == -1
+    if forceOutput.Outport ~= -1
+        delete_line(forceOutput.Outport);
+    end
+    add_line(target, 'PS-Simulink Converter1/1', 'Fmi/1');
+end
+
+save_system('stewart_strut', modelFile);
+clear cleanup;
+end
+
+function tf = blockExists(blockPath)
+try
+    tf = getSimulinkBlockHandle(blockPath) ~= -1;
+catch
+    tf = false;
+end
+end
+
+function deleteConnectedLines(blockPath)
+lineHandles = get_param(blockPath, 'LineHandles');
+fields = fieldnames(lineHandles);
+for fieldIndex = 1:numel(fields)
+    handles = lineHandles.(fields{fieldIndex});
+    handles = handles(handles ~= -1);
+    for handleIndex = 1:numel(handles)
+        try
+            delete_line(handles(handleIndex));
+        catch
+        end
+    end
+end
+end
