@@ -1,5 +1,7 @@
 %% run_03_simscape_length_cascade_control - 纯长度串级控制入口
 % 仅使用轨迹中的 t/q/qd，在仿真前逐腿自动整定位置 P 与速度 PIDF。
+% 默认位置环/速度环增益缩放为 1.0/0.7。
+% q/qd 经 10 ms 分段三次 Hermite 重建后同步生成腿长与腿速参考。
 % 设置 lengthCascadeRunMode='manual' 后，本脚本只准备变量并打开模型。
 clearvars -except lengthCascadeRunMode lengthCascadeTrajectoryFile lengthCascadeConfigOverrides;
 close all; clc;

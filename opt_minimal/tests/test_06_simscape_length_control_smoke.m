@@ -1,5 +1,5 @@
 function test_06_simscape_length_control_smoke
-% test_06_simscape_length_control_smoke - 短时验证参数化模型、整定和结果解析
+% test_06_simscape_length_control_smoke - 短时验证力输入位姿跟踪不会起步坠落
 optRoot = fileparts(fileparts(mfilename('fullpath')));
 projectRoot = fileparts(optRoot);
 addpath(fullfile(projectRoot, 'src'));
@@ -8,48 +8,22 @@ addpath(fullfile(projectRoot, 'simscape_subsystems'));
 addpath(fullfile(optRoot, 'core'));
 addpath(fullfile(optRoot, 'integration'));
 
-model = buildOptModelCustom();
-scene = buildCylinderBoxTransferScene(model);
-simscapeData = buildSimscapeLengthControlData(model, scene);
-homeLength = sgpIK(model.qHome, model).L;
+setup = prepareSimscapePoseForceControl("");
+cleanup = onCleanup(@() closePreparedModel(setup.modelName));
+output = sim(setup.modelName, 'StopTime', '0.02', 'ReturnWorkspaceOutputs', 'on');
+report = evaluateSimscapePoseForceControl( ...
+    output.get('simout'), setup.refs, setup.model, setup.design, setup.config);
 
-refs = struct();
-refs.t = [0, 0.02];
-refs.q = repmat(model.qHome, 1, 2);
-refs.q0 = model.qHome;
-refs.L = repmat(homeLength, 1, 2);
-refs.Fleg = repmat(inverseDynamicsCompositeRigidBody( ...
-    model.qHome, zeros(6, 1), zeros(6, 1), model), 1, 2);
-references = struct();
-references.r = timeseries(zeros(2, 6), refs.t(:));
-references.rL = timeseries(zeros(2, 6), refs.t(:));
-references.rLd = timeseries(zeros(2, 6), refs.t(:));
-references.uFF = timeseries(refs.Fleg.', refs.t(:));
-
-assignin('base', 'stewart', simscapeData.stewart);
-assignin('base', 'payload', simscapeData.payload);
-assignin('base', 'ground', simscapeData.ground);
-assignin('base', 'disturbances', simscapeData.disturbances);
-assignin('base', 'references', references);
-assignin('base', 'controller', initializeController('type', 'open-loop'));
-assignin('base', 'Kl', ss(zeros(6)));
-
-modelFile = fullfile(projectRoot, 'matlab', 'stewart_platform_model.slx');
-load_system(modelFile);
-cleanup = onCleanup(@() close_system('stewart_platform_model', 0));
-configureSimscapeGravity('stewart_platform_model', simscapeData.gravity, 'enabled', false);
-design = designSimscapeLengthController('stewart_platform_model', 0.5);
-assignin('base', 'Kl', design.Kl);
-assignin('base', 'controller', simscapeData.controller);
-configureSimscapeGravity('stewart_platform_model', simscapeData.gravity);
-simulationOutput = sim('stewart_platform_model', 'StopTime', '0.02', ...
-    'ReturnWorkspaceOutputs', 'on');
-report = evaluateSimscapeLengthControl(simulationOutput.get('simout'), refs, model, design);
-
-assert(design.stable);
-assert(design.lowFrequencyRank == 6);
+assert(setup.controller.type == 6);
 assert(report.acceptance.finitePassed);
-assert(~isempty(report.controlForce));
-assert(report.metrics.minAbsoluteLength > min(homeLength) - 1e-3);
+assert(report.acceptance.forcePassed);
+assert(report.metrics.minAbsoluteLength > min(setup.refs.L(:, 1)) - 1e-3);
 assert(report.metrics.maxAbsControlForce > 100);
+end
+
+function closePreparedModel(modelName)
+if bdIsLoaded(modelName)
+    set_param(modelName, 'Dirty', 'off');
+    close_system(modelName, 0);
+end
 end

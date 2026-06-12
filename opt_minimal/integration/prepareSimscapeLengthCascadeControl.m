@@ -29,8 +29,9 @@ sample = load(trajectoryFile, 'refs');
 
 model = buildOptModelCustom();
 scene = buildCylinderBoxTransferScene(model);
-[lengthRefs, references] = generateSimscapeLengthCascadeReferences(sample.refs, model);
 config = makeSimscapeLengthCascadeConfig(model, configOverrides);
+[lengthRefs, references] = generateSimscapeLengthCascadeReferences( ...
+    sample.refs, model, config.sampleTime);
 design = designSimscapeLengthCascadeController(config);
 simscapeData = buildSimscapeLengthControlData(model, scene, 'length-cascade');
 controller = simscapeData.controller;

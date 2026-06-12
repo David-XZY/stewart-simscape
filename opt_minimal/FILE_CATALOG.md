@@ -1,14 +1,14 @@
 # opt_minimal 文件目录
 
-状态说明：`活动` 表示当前主线直接或间接使用；`测试` 表示活动契约测试；`工具` 表示主线可调用的维护工具；`归档` 表示仅供历史追溯，活动代码不得调用。
+状态说明：`活动` 表示当前主线直接或间接使用；`测试` 表示活动契约测试；`工具` 表示主线可调用的维护工具；`保留` 表示不再由活动入口调用但暂留复查；`归档` 表示仅供历史追溯，活动代码不得调用。
 
 ## 根目录
 
 | 文件 | 用途 | 状态 | 调用方/入口 | 处理原因 |
 |---|---|---|---|---|
 | `run_01_ihsid_trajectory.m` | standard IHSID 40x20 limited-memory 唯一主入口 | 活动 | 用户直接运行 | 由旧主入口改名并收敛为 IHSID |
-| `run_02_simscape_length_control.m` | 自动运行或手动准备 IHSID 轨迹的 Simscape 稳定跟踪 | 活动 | 用户直接运行 | 自动/手动控制接入与完整硬验收入口 |
-| `run_03_simscape_length_cascade_control.m` | 自动运行或手动准备纯长度串级控制 | 活动 | 用户直接运行 | 仅依赖 q/qd 的长度伺服与完整硬验收入口 |
+| `run_02_simscape_length_control.m` | 自动运行或手动准备力输入位姿轨迹跟踪 | 活动 | 用户直接运行 | 重力开启的力驱动控制、Run03 对比与完整硬验收入口 |
+| `run_03_simscape_length_cascade_control.m` | 自动运行或手动准备纯长度串级控制 | 活动 | 用户直接运行 | 默认 1.0/0.7 增益缩放的长度伺服与完整硬验收入口 |
 | `README.md` | 运行、验收和 Simscape 接入说明 | 活动 | 维护者 | 替代旧 HS 总说明 |
 | `FILE_CATALOG.md` | 逐文件分类目录 | 活动 | 维护者 | 便于交接与后续更新 |
 
@@ -48,11 +48,17 @@
 | `validation/validateTrajectoryDenseIHSID.m` | IHSID 专用 dense 工程验收 | 活动 | 主入口 | 替代多方法验证分支 |
 | `validation/validateTrajectoryDenseImplicit.m` | 密集采样后验 | 活动 | IHSID 专用验证器 | 保留稳定 dense 计算 |
 | `integration/exportTrajectoryToSimscape.m` | 导出原始数组和 `references` timeseries | 活动 | 主入口、测试 | Simscape 接口 |
-| `integration/prepareSimscapeLengthControl.m` | 统一加载轨迹、配置参数、整定控制器并准备模型 | 活动 | `run_02`、测试 | 保证自动与手动模式配置一致 |
+| `integration/reconstructHermitePoseReference.m` | 由节点 q/qd 重建规则网格位姿参考 | 活动 | Run02、Run03、测试 | 保证参考位姿与速度导数一致 |
+| `integration/makeSimscapePoseForceConfig.m` | 构建力输入位姿控制统一配置 | 活动 | `run_02`、测试 | 默认整定参数与约束单一来源 |
+| `integration/designSimscapePoseForceController.m` | 线性化并整定笛卡尔位姿动态反馈控制器 | 活动 | `run_02`、测试 | 复用 `Reference-Tracking-X` 与 `Jv^-T` 力映射 |
+| `integration/prepareSimscapePoseForceControl.m` | 加载轨迹、整定控制器并准备位姿力控制模型 | 活动 | `run_02`、测试 | 保证自动与手动模式配置一致 |
+| `integration/evaluateSimscapePoseForceControl.m` | 解析位姿力控制结果并执行硬验收 | 活动 | `run_02`、测试 | 统一位姿、腿运动和总力验收 |
+| `integration/comparePoseTrackingPerformance.m` | 计算 Run02/Run03 位姿综合分 | 活动 | `run_02`、测试 | 固化位姿优先比较口径 |
+| `integration/prepareSimscapeLengthControl.m` | 旧长度反馈准备实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
 | `integration/buildSimscapeLengthControlData.m` | 将优化参数映射为 Simscape 被控对象数据 | 活动 | 控制入口、测试 | 参数单一来源 |
 | `integration/configureSimscapeGravity.m` | 运行期启用或关闭 Simscape 重力 | 活动 | 控制入口、测试 | 保持模型文件通用 |
-| `integration/designSimscapeLengthController.m` | 线性化并整定六路对角 PIDF | 活动 | 控制入口、测试 | 长度误差反馈控制器 |
-| `integration/evaluateSimscapeLengthControl.m` | 解析闭环结果并执行硬验收 | 活动 | 控制入口、测试 | 控制结果验收 |
+| `integration/designSimscapeLengthController.m` | 旧长度反馈 PIDF 整定实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
+| `integration/evaluateSimscapeLengthControl.m` | 旧长度反馈验收实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
 | `integration/generateSimscapeLengthCascadeReferences.m` | 由 q/qd 生成腿长与腿速参考 | 活动 | `run_03`、测试 | 移除长度模式的力轨迹依赖 |
 | `integration/makeSimscapeLengthCascadeConfig.m` | 构建纯长度串级统一配置 | 活动 | `run_03`、测试 | 采样、对象与约束参数单一来源 |
 | `integration/designSimscapeLengthCascadeController.m` | 逐腿自动整定位置 P 与速度 PIDF | 活动 | `run_03`、测试 | 仿真前自整定 |
@@ -61,7 +67,7 @@
 | `integration/installSimscapeLengthCascadeVariants.m` | 在现有 SLX 中安装长度控制与执行器 Variant | 活动 | 模型维护 | 保持 SLX 增量修改可复现 |
 | `tools/animateStewartTrajectory.m` | 离线动画 | 工具 | 主入口 | 保留维护价值 |
 | `tools/exportStewartMountingDiagram.m` | 装配图导出 | 工具 | 绘图流程 | 保留维护价值 |
-| `tools/exportRun02Run03MeetingFigures.m` | 导出 Run02/Run03 组会总览与对比 FIG/PNG | 工具 | 用户直接调用 | 汇报图可复现导出 |
+| `tools/exportRun02Run03MeetingFigures.m` | 导出 Run02/Run03 总览、对比与纹波诊断 FIG/PNG | 工具 | 用户直接调用 | 汇报图与纹波来源诊断可复现导出 |
 | `tools/plotOptResult.m` | 轨迹与约束检查图 | 工具 | 主入口 | 标准样例图来源 |
 
 ## 活动测试
@@ -74,13 +80,15 @@
 | `tests/test_03_directory_contract.m` | 根目录、unused 依赖和残留扫描 | 测试 | 测试入口 | 防止主线再次发散 |
 | `tests/test_04_simscape_model_contract.m` | 加载 `.slx` 并检查输入和控制力日志 | 测试 | 测试入口 | 模型接口契约 |
 | `tests/test_05_simscape_parameter_mapping.m` | 验证优化参数到 Simscape 的精确映射 | 测试 | 测试入口 | 参数映射契约 |
-| `tests/test_06_simscape_length_control_smoke.m` | 短时验证线性化、整定、仿真和解析 | 测试 | 测试入口 | 控制闭环冒烟测试 |
-| `tests/test_07_simscape_preparation_contract.m` | 验证统一准备接口、轨迹校验和手动模式 | 测试 | 测试入口 | 自动/手动模式契约 |
-| `tests/test_08_simscape_full_tracking.m` | 验证默认 10 Hz 完整轨迹跟踪硬验收 | 测试 | 测试入口 | 防止完整轨迹再次失控 |
+| `tests/test_06_simscape_length_control_smoke.m` | 短时验证力输入位姿控制不会起步坠落 | 测试 | 测试入口 | 控制闭环冒烟测试 |
+| `tests/test_07_simscape_preparation_contract.m` | 验证位姿力控制统一准备接口 | 测试 | 测试入口 | 自动/手动模式契约 |
+| `tests/test_08_simscape_full_tracking.m` | 验证默认位姿力控制完整轨迹硬验收 | 测试 | 测试入口 | 防止完整轨迹再次失控 |
 | `tests/test_09_length_cascade_reference_contract.m` 至 `test_13_length_cascade_evaluation_contract.m` | 验证纯 q/qd 参考、整定、准备、SLX 与验收契约 | 测试 | 测试入口 | 纯长度控制结构契约 |
 | `tests/test_14_length_cascade_smoke.m` | 短时验证纯长度 Variant 可运行 | 测试 | 测试入口 | 纯长度冒烟测试 |
 | `tests/test_15_length_cascade_full_tracking.m` | 验证标准全轨迹纯长度硬验收 | 测试 | 测试入口 | 防止纯长度轨迹回归 |
-| `tests/test_16_meeting_figure_export_contract.m` | 验证三组组会 FIG/PNG 可重新打开并满足 16:9 输出 | 测试 | 测试入口 | 汇报图导出契约 |
+| `tests/test_16_meeting_figure_export_contract.m` | 验证四组 FIG/PNG 与纹波诊断字段 | 测试 | 测试入口 | 汇报图和纹波诊断导出契约 |
+| `tests/test_17_pose_force_control_contract.m` 至 `test_19_pose_force_full_tracking.m` | 验证位姿力配置、整定、准备、综合分和完整轨迹 | 测试 | 测试入口 | 新 Run02 控制结构契约 |
+| `tests/test_20_hermite_reference_contract.m` | 验证 Hermite 重建精确通过节点 q/qd | 测试 | 测试入口 | 防止参考重建退化为线性插值 |
 
 ## 归档源码
 

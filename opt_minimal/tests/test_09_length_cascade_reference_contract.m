@@ -11,25 +11,31 @@ refs = rmfield(sample.refs, {'L', 'Fleg'});
 
 [lengthRefs, references] = generateSimscapeLengthCascadeReferences(refs, model);
 nodeCount = numel(refs.t);
+denseCount = numel(lengthRefs.t);
 
-assert(isequal(size(lengthRefs.Lref), [6, nodeCount]));
-assert(isequal(size(lengthRefs.Ldref), [6, nodeCount]));
-assert(isequal(size(references.rL.Data), [nodeCount, 6]));
-assert(isequal(size(references.rLd.Data), [nodeCount, 6]));
+assert(denseCount > nodeCount);
+assert(max(abs(diff(lengthRefs.t) - 0.01)) < 1e-12);
+assert(strcmp(lengthRefs.referenceInterpolation, 'cubic-hermite'));
+assert(isequal(lengthRefs.nodeTime, refs.t));
+assert(isequal(size(lengthRefs.Lref), [6, denseCount]));
+assert(isequal(size(lengthRefs.Ldref), [6, denseCount]));
+assert(isequal(size(references.rL.Data), [denseCount, 6]));
+assert(isequal(size(references.rLd.Data), [denseCount, 6]));
 assert(~isfield(references, 'uFF'));
 assert(~isfield(lengthRefs, 'Fleg'));
 
 for nodeIndex = [1, ceil(nodeCount / 2), nodeCount]
+    denseIndex = find(abs(lengthRefs.t - refs.t(nodeIndex)) < 1e-12, 1);
     kin = sgpIK(refs.q(:, nodeIndex), model);
     jacobian = sgpJacobian(refs.q(:, nodeIndex), model);
-    assert(max(abs(lengthRefs.Lref(:, nodeIndex) - kin.L)) < 1e-12);
-    assert(max(abs(lengthRefs.Ldref(:, nodeIndex) - ...
+    assert(max(abs(lengthRefs.Lref(:, denseIndex) - kin.L)) < 1e-12);
+    assert(max(abs(lengthRefs.Ldref(:, denseIndex) - ...
         jacobian.Jq * refs.qd(:, nodeIndex))) < 1e-12);
 end
 
 numericLd = zeros(size(lengthRefs.Lref));
 for legIndex = 1:6
-    numericLd(legIndex, :) = gradient(lengthRefs.Lref(legIndex, :), refs.t);
+    numericLd(legIndex, :) = gradient(lengthRefs.Lref(legIndex, :), lengthRefs.t);
 end
-assert(max(abs(numericLd(:) - lengthRefs.Ldref(:))) < 0.08);
+assert(max(abs(numericLd(:) - lengthRefs.Ldref(:))) < 0.02);
 end

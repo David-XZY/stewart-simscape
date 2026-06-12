@@ -1,8 +1,9 @@
-function [lengthRefs, references] = generateSimscapeLengthCascadeReferences(refs, model)
+function [lengthRefs, references] = generateSimscapeLengthCascadeReferences(refs, model, sampleTime)
 % generateSimscapeLengthCascadeReferences - 仅由 q/qd 生成长度级联参考
 arguments
     refs struct
     model struct
+    sampleTime (1, 1) double {mustBePositive, mustBeFinite} = 0.01
 end
 
 requiredFields = {'t', 'q', 'qd'};
@@ -26,26 +27,30 @@ if ~isequal(size(refs.q), [6, nodeCount]) || ...
         'refs.q 和 refs.qd 必须为有限的 6x%d 数组。', nodeCount);
 end
 
-Lref = zeros(6, nodeCount);
-Ldref = zeros(6, nodeCount);
-for nodeIndex = 1:nodeCount
-    kin = sgpIK(refs.q(:, nodeIndex), model);
-    jacobian = sgpJacobian(refs.q(:, nodeIndex), model);
-    Lref(:, nodeIndex) = kin.L;
-    Ldref(:, nodeIndex) = jacobian.Jq * refs.qd(:, nodeIndex);
+poseReference = reconstructHermitePoseReference(time, refs.q, refs.qd, sampleTime);
+denseCount = numel(poseReference.t);
+Lref = zeros(6, denseCount);
+Ldref = zeros(6, denseCount);
+for sampleIndex = 1:denseCount
+    kin = sgpIK(poseReference.q(:, sampleIndex), model);
+    jacobian = sgpJacobian(poseReference.q(:, sampleIndex), model);
+    Lref(:, sampleIndex) = kin.L;
+    Ldref(:, sampleIndex) = jacobian.Jq * poseReference.qd(:, sampleIndex);
 end
 
 lengthRefs = struct();
-lengthRefs.t = time.';
-lengthRefs.q = refs.q;
-lengthRefs.qd = refs.qd;
+lengthRefs.t = poseReference.t;
+lengthRefs.q = poseReference.q;
+lengthRefs.qd = poseReference.qd;
 lengthRefs.q0 = refs.q(:, 1);
 lengthRefs.Lref = Lref;
 lengthRefs.Ldref = Ldref;
+lengthRefs.nodeTime = poseReference.nodeTime;
+lengthRefs.referenceInterpolation = poseReference.interpolation;
 
 references = struct();
-references.r = timeseries((refs.q - refs.q(:, 1)).', time);
-references.rL = timeseries((Lref - Lref(:, 1)).', time);
-references.rLd = timeseries(Ldref.', time);
-references.description = '仅由 q/qd 生成的纯长度串级控制参考轨迹';
+references.r = timeseries((poseReference.q - refs.q(:, 1)).', poseReference.t(:));
+references.rL = timeseries((Lref - Lref(:, 1)).', poseReference.t(:));
+references.rLd = timeseries(Ldref.', poseReference.t(:));
+references.description = '由节点 q/qd 经三次 Hermite 重建的纯长度串级控制参考轨迹';
 end

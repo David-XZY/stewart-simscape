@@ -16,6 +16,10 @@ testFiles = {
     'test_14_length_cascade_smoke'
     'test_15_length_cascade_full_tracking'
     'test_16_meeting_figure_export_contract'
+    'test_17_pose_force_control_contract'
+    'test_18_pose_force_preparation_contract'
+    'test_19_pose_force_full_tracking'
+    'test_20_hermite_reference_contract'
 };
 
 for index = 1:numel(testFiles)

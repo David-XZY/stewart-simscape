@@ -23,6 +23,8 @@ assert(~setup.config.gravityEnabled);
 assert(~isfield(setup.references, 'uFF'));
 assert(isfield(setup.references, 'rL'));
 assert(isfield(setup.references, 'rLd'));
+assert(strcmp(setup.refs.referenceInterpolation, 'cubic-hermite'));
+assert(max(abs(diff(setup.refs.t) - setup.config.sampleTime)) < 1e-12);
 assert(evalin('base', 'exist(''lengthCascadeConfig'', ''var'') == 1'));
 assert(evalin('base', 'exist(''lengthCascadeDesign'', ''var'') == 1'));
 assert(evalin('base', 'exist(''references'', ''var'') == 1'));

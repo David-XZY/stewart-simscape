@@ -13,7 +13,7 @@ assert(abs(design.sampleTime - 0.01) < eps);
 assert(abs(design.innerBandwidthHz - 10) < eps);
 assert(abs(design.outerBandwidthHz - 2) < eps);
 assert(design.positionGainScale == 1);
-assert(design.velocityGainScale == 1);
+assert(design.velocityGainScale == 0.7);
 assert(isequal(size(design.Kpos), [6, 1]));
 assert(numel(design.velocityControllers) == 6);
 assert(all(design.Kpos > 0));
@@ -24,7 +24,7 @@ assert(isequal(config.accelerationLimit, model.actuator.lddotMax));
 assert(~config.gravityEnabled);
 
 scaledConfig = makeSimscapeLengthCascadeConfig(model, struct( ...
-    'positionGainScale', 0.7, 'velocityGainScale', 0.8));
+    'positionGainScale', 0.7, 'velocityGainScale', 0.5));
 scaledDesign = designSimscapeLengthCascadeController(scaledConfig);
 assert(scaledDesign.stable);
 assert(all(scaledDesign.Kpos < design.Kpos));

@@ -9,12 +9,22 @@ end
 cleanup = onCleanup(@() removeDirectory(outputDir));
 
 result = exportRun02Run03MeetingFigures("", "", outputDir);
-assert(numel(result.figFiles) == 3);
-assert(numel(result.pngFiles) == 3);
+assert(numel(result.figFiles) == 4);
+assert(numel(result.pngFiles) == 4);
 assert(all(isfile(result.figFiles)));
 assert(all(isfile(result.pngFiles)));
+assert(isfield(result, 'rippleDiagnostics'));
+diagnostics = result.rippleDiagnostics;
+assert(isscalar(diagnostics.legIndex) && diagnostics.legIndex >= 1 && diagnostics.legIndex <= 6);
+assert(isequal(size(diagnostics.zoomWindow), [1, 2]));
+assert(all(isfinite(diagnostics.zoomWindow)));
+assert(isfinite(diagnostics.dominantFrequencyHz) && diagnostics.dominantFrequencyHz > 0);
+assert(isfinite(diagnostics.referenceNodeFrequencyHz) && diagnostics.referenceNodeFrequencyHz > 0);
+assert(isfinite(diagnostics.nodeFrequencyAmplitudeNormalized));
+assert(isfinite(diagnostics.innerBandwidthHz) && diagnostics.innerBandwidthHz > 0);
+assert(abs(diagnostics.sampleFrequencyHz - 100) < 1e-9);
 
-for index = 1:3
+for index = 1:4
     fig = openfig(result.figFiles{index}, 'invisible');
     figCleanup = onCleanup(@() close(fig));
     assert(~isempty(findall(fig, 'Type', 'axes')));
