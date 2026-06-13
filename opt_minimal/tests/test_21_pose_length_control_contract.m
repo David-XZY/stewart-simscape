@@ -12,14 +12,18 @@ design = designSimscapePoseLengthController(model, config);
 controller = initializeController('type', 'pose-length-cascade');
 
 assert(controller.type == 9);
-assert(config.poseFeedbackGain == 0.3);
+assert(config.poseFeedbackGain == 1.0);
 assert(config.poseCorrectionLimit == 0.002);
+assert(config.poseFeedbackFilterHz == 2.0);
 assert(design.stable);
-assert(isequal(size(design.poseToLengthGain), [6, 6]));
-assert(rank(design.poseToLengthGain) == 6);
+assert(design.useTimeVaryingReferenceJacobian);
+assert(0 < design.poseFeedbackFilterAlpha && design.poseFeedbackFilterAlpha < 1);
 
 poseError = [1e-3; 0; 0; 0; 0; 0];
-lengthCorrection = design.poseToLengthGain * poseError;
+lengthCorrection = config.poseFeedbackGain * sgpJacobian(model.qHome, model).Jq * poseError;
 assert(all(isfinite(lengthCorrection)));
 assert(max(abs(lengthCorrection)) < config.poseCorrectionLimit);
+
+otherJacobian = sgpJacobian(model.qHome + [0.02; 0; 0; 0; 0; 0], model).Jq;
+assert(max(abs(otherJacobian - sgpJacobian(model.qHome, model).Jq), [], 'all') > 1e-4);
 end

@@ -13,7 +13,10 @@ report = evaluateSimscapePoseLengthControl(output.get('simout'), ...
 
 assert(report.passed, 'Run04 位姿外环长度输入控制未通过完整轨迹硬验收。');
 assert(isfield(report, 'poseLengthCorrection'));
+assert(isfield(report, 'filteredPoseError'));
 assert(report.metrics.maxAbsPoseLengthCorrection <= setup.config.poseCorrectionLimit + 1e-9);
+assert(report.metrics.post5sEquivalentPoseRippleRms < 2e-5, ...
+    'Run04 后半段等效位姿高频纹波 RMS 必须低于 0.02 mm。');
 end
 
 function closePreparedModel(modelName)

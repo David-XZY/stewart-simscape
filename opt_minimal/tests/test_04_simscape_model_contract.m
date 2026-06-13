@@ -13,6 +13,7 @@ variables = cellfun(@(block) get_param(block, 'VariableName'), blocks, 'UniformO
 assert(any(strcmp(variables, 'references.r')), '模型未读取 references.r。');
 assert(any(strcmp(variables, 'references.rL')), '模型未读取 references.rL。');
 assert(any(strcmp(variables, 'references.uFF')), '模型未读取 references.uFF。');
+assert(any(strcmp(variables, 'references.rJq')), '模型未读取 references.rJq。');
 variantSource = find_system('stewart_platform_model', 'SearchDepth', 1, ...
     'BlockType', 'VariantSource');
 assert(isscalar(variantSource), '顶层缺少执行器前馈 Variant Source。');
@@ -28,4 +29,13 @@ inputSignals = string(get_param(sourceBlock, 'InputSignalNames'));
 assert(any(inputSignals == "u"), 'simout 尚未记录控制器输出力 u。');
 assert(any(inputSignals == "uFeedback"), 'simout 尚未记录长度反馈力 uFeedback。');
 assert(any(inputSignals == "uFF"), 'simout 尚未记录前馈力 uFF。');
+
+payloadSolid = 'stewart_platform_model/Payload/Rigid/Cylindrical Solid';
+payloadTransform = 'stewart_platform_model/Payload/Rigid/Rigid Transform';
+assert(strcmp(get_param(payloadSolid, 'CylinderRadius'), 'payload.radius'));
+assert(strcmp(get_param(payloadSolid, 'CylinderLength'), 'payload.length'));
+assert(strcmp(get_param(payloadSolid, 'CenterOfMass'), '[0 0 0]'));
+assert(strcmp(get_param(payloadSolid, 'MomentsOfInertia'), 'diag(payload.I_local)'));
+assert(strcmp(get_param(payloadTransform, 'TranslationCartesianOffset'), 'payload.center'));
+assert(strcmp(get_param(payloadTransform, 'RotationMatrix'), 'payload.R'));
 end

@@ -31,11 +31,13 @@ poseReference = reconstructHermitePoseReference(time, refs.q, refs.qd, sampleTim
 denseCount = numel(poseReference.t);
 Lref = zeros(6, denseCount);
 Ldref = zeros(6, denseCount);
+referenceJacobian = zeros(6, 6, denseCount);
 for sampleIndex = 1:denseCount
     kin = sgpIK(poseReference.q(:, sampleIndex), model);
     jacobian = sgpJacobian(poseReference.q(:, sampleIndex), model);
     Lref(:, sampleIndex) = kin.L;
     Ldref(:, sampleIndex) = jacobian.Jq * poseReference.qd(:, sampleIndex);
+    referenceJacobian(:, :, sampleIndex) = jacobian.Jq;
 end
 
 lengthRefs = struct();
@@ -52,5 +54,6 @@ references = struct();
 references.r = timeseries((poseReference.q - refs.q(:, 1)).', poseReference.t(:));
 references.rL = timeseries((Lref - Lref(:, 1)).', poseReference.t(:));
 references.rLd = timeseries(Ldref.', poseReference.t(:));
+references.rJq = timeseries(referenceJacobian, poseReference.t(:));
 references.description = '由节点 q/qd 经三次 Hermite 重建的纯长度串级控制参考轨迹';
 end

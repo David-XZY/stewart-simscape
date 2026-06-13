@@ -21,7 +21,7 @@ if ~isfolder(outputDir)
 end
 
 runs = {load(run02File), load(run03File), load(run04File)};
-labels = {'Run02 位姿反馈力输入', 'Run03 纯腿长输入', 'Run04 位姿反馈腿长输入'};
+labels = {'位姿反馈力输入', '纯腿长串级控制', '位姿反馈腿长输入'};
 colors = [0.00 0.35 0.70; 0.90 0.40 0.05; 0.00 0.55 0.35];
 for index = 1:3
     assert(isfield(runs{index}, 'report') && runs{index}.report.passed, ...
@@ -31,7 +31,7 @@ end
 fig = figure('Color', 'w', 'Visible', 'off', 'Units', 'pixels', ...
     'Position', [80, 80, 1600, 900]);
 layout = tiledlayout(fig, 2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
-sgtitle(layout, 'Run02 / Run03 / Run04 跟踪性能对比', 'FontSize', 18, 'FontWeight', 'bold');
+sgtitle(layout, '三种控制结构跟踪性能对比', 'FontSize', 18, 'FontWeight', 'bold');
 plotPeakHistory(nexttile(layout), runs, labels, colors, 'length', '逐时刻最大腿长误差', '误差 (mm)');
 plotPeakHistory(nexttile(layout), runs, labels, colors, 'translation', '逐时刻最大平移误差', '误差 (mm)');
 plotPeakHistory(nexttile(layout), runs, labels, colors, 'rotation', '逐时刻最大转角误差', '误差 (deg)');

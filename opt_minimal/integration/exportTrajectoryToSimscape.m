@@ -45,5 +45,6 @@ references = struct();
 references.r = timeseries((refs.q - refs.q0).', time);
 references.rL = timeseries((refs.L - refs.L(:, 1)).', time);
 references.uFF = timeseries(refs.Fleg.', time);
+references.rJq = timeseries(zeros(6, 6, numel(time)), time);
 references.description = '供 stewart_platform_model.slx 使用的 IHSID 相对参考轨迹';
 end

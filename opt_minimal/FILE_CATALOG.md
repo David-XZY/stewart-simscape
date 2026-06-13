@@ -57,6 +57,7 @@
 | `integration/comparePoseTrackingPerformance.m` | 计算 Run02/Run03 位姿综合分 | 活动 | `run_02`、测试 | 固化位姿优先比较口径 |
 | `integration/prepareSimscapeLengthControl.m` | 旧长度反馈准备实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
 | `integration/buildSimscapeLengthControlData.m` | 将优化参数映射为 Simscape 被控对象数据 | 活动 | 控制入口、测试 | 参数单一来源 |
+| `integration/installSimscapePayloadGeometry.m` | 将刚性载荷实体配置为横卧真实尺寸圆柱 | 活动 | 模型维护 | 统一中期报告、优化模型和 Simscape 外形与惯量坐标 |
 | `integration/configureSimscapeGravity.m` | 运行期启用或关闭 Simscape 重力 | 活动 | 控制入口、测试 | 保持模型文件通用 |
 | `integration/designSimscapeLengthController.m` | 旧长度反馈 PIDF 整定实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
 | `integration/evaluateSimscapeLengthControl.m` | 旧长度反馈验收实现 | 保留 | 无活动入口 | 仅供历史结果复查 |
@@ -66,7 +67,7 @@
 | `integration/prepareSimscapeLengthCascadeControl.m` | 准备纯长度 Variant、参考与基础工作区 | 活动 | `run_03`、测试 | 自动/手动模式统一入口 |
 | `integration/evaluateSimscapeLengthCascadeControl.m` | 解析纯长度日志并执行无力指标硬验收 | 活动 | `run_03`、测试 | 纯长度控制结果验收 |
 | `integration/makeSimscapePoseLengthConfig.m` | 构建位姿反馈纯腿长配置 | 活动 | `run_04`、测试 | 固化位姿反馈增益与腿长修正限幅 |
-| `integration/designSimscapePoseLengthController.m` | 构造位姿误差到腿长修正映射 | 活动 | `run_04`、测试 | 复用 Run03 串级控制与初始位姿雅可比 |
+| `integration/designSimscapePoseLengthController.m` | 构造低通位姿误差到腿长修正的增益调度 | 活动 | `run_04`、测试 | 复用 Run03 串级控制与时变参考雅可比 |
 | `integration/prepareSimscapePoseLengthControl.m` | 准备位姿反馈纯腿长 Variant 与基础工作区 | 活动 | `run_04`、测试 | 自动/手动模式统一入口 |
 | `integration/evaluateSimscapePoseLengthControl.m` | 解析并验收位姿反馈纯腿长结果 | 活动 | `run_04`、测试 | 复用 Run03 硬验收并增加修正量诊断 |
 | `integration/installSimscapeLengthCascadeVariants.m` | 在现有 SLX 中安装长度控制与执行器 Variant | 活动 | 模型维护 | 保持 SLX 增量修改可复现 |

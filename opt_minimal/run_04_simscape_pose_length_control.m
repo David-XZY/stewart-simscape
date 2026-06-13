@@ -1,6 +1,6 @@
 %% run_04_simscape_pose_length_control - 位姿反馈纯腿长输入控制入口
-% 在 Run03 长度串级控制基础上，将平台位姿误差通过初始位姿雅可比
-% 转换为腿长参考修正；最终执行器仍为理想腿长输入，重力保持关闭。
+% 在 Run03 长度串级控制基础上，先低通平台位姿误差，再通过随参考位姿
+% 变化的雅可比转换为腿长参考修正；最终执行器仍为理想腿长输入。
 clearvars -except poseLengthRunMode poseLengthTrajectoryFile poseLengthConfigOverrides;
 close all; clc;
 
@@ -30,6 +30,7 @@ fprintf('位置环/速度环增益缩放：%.3f / %.3f\n', ...
     setup.design.positionGainScale, setup.design.velocityGainScale);
 fprintf('位姿反馈增益/腿长修正限幅：%.3f / %.3f mm\n', ...
     setup.design.poseFeedbackGain, 1e3 * setup.design.poseCorrectionLimit);
+fprintf('位姿反馈低通截止频率：%.3f Hz\n', setup.design.poseFeedbackFilterHz);
 fprintf('重力启用：%d\n', setup.config.gravityEnabled);
 
 if strcmp(poseLengthRunMode, 'manual')
@@ -87,6 +88,7 @@ fprintf(fid, 'resultFile: %s\n', resultFile);
 fprintf(fid, 'trajectoryFile: %s\n', setup.trajectoryFile);
 fprintf(fid, 'poseFeedbackGain: %.12g\n', setup.design.poseFeedbackGain);
 fprintf(fid, 'poseCorrectionLimit: %.12g\n', setup.design.poseCorrectionLimit);
+fprintf(fid, 'poseFeedbackFilterHz: %.12g\n', setup.design.poseFeedbackFilterHz);
 fprintf(fid, 'positionGainScale: %.12g\n', setup.design.positionGainScale);
 fprintf(fid, 'velocityGainScale: %.12g\n', setup.design.velocityGainScale);
 fprintf(fid, 'gravityEnabled: %d\n', setup.config.gravityEnabled);
@@ -114,7 +116,7 @@ nexttile; plot(report.poseTime, report.poseError(:, 1:3) * 1e3, 'LineWidth', 1);
 grid on; ylabel('平移误差 (mm)'); title('平台平移误差');
 nexttile; plot(report.poseTime, rad2deg(report.poseError(:, 4:6)), 'LineWidth', 1);
 grid on; ylabel('转角误差 (deg)'); title('平台转角误差');
-nexttile; plot(report.poseTime, report.poseLengthCorrection * 1e3, 'LineWidth', 1);
+nexttile; plot(report.poseLengthCorrectionTime, report.poseLengthCorrection * 1e3, 'LineWidth', 1);
 grid on; xlabel('时间 (s)'); ylabel('修正量 (mm)'); title('位姿反馈生成的腿长参考修正');
 exportgraphics(fig, fileName, 'Resolution', 180);
 close(fig);
