@@ -1,5 +1,5 @@
-function setup = prepareSimscapeLengthCascadeControl(trajectoryFile, configOverrides)
-% prepareSimscapeLengthCascadeControl - 准备纯 q/qd 长度串级控制仿真
+function setup = prepareSimscapePoseLengthControl(trajectoryFile, configOverrides)
+% prepareSimscapePoseLengthControl - 准备位姿外环加纯腿长输入控制
 arguments
     trajectoryFile {mustBeTextScalar} = ""
     configOverrides struct = struct()
@@ -20,20 +20,18 @@ addpath(fullfile(optRoot, 'core'));
 addpath(fullfile(optRoot, 'integration'));
 ensureSimscapeConfiguration(projectRoot);
 
-fileVariables = string({whos('-file', trajectoryFile).name});
-if ~any(fileVariables == "refs")
-    error('prepareSimscapeLengthCascadeControl:InvalidReferences', ...
+sample = load(trajectoryFile, 'refs');
+if ~isfield(sample, 'refs')
+    error('prepareSimscapePoseLengthControl:InvalidReferences', ...
         '指定轨迹文件不包含 refs。');
 end
-sample = load(trajectoryFile, 'refs');
-
 model = buildOptModelCustom();
 scene = buildCylinderBoxTransferScene(model);
-config = makeSimscapeLengthCascadeConfig(model, configOverrides);
-[lengthRefs, references] = generateSimscapeLengthCascadeReferences( ...
+config = makeSimscapePoseLengthConfig(model, configOverrides);
+[refs, references] = generateSimscapeLengthCascadeReferences( ...
     sample.refs, model, config.sampleTime);
-design = designSimscapeLengthCascadeController(config);
-simscapeData = buildSimscapeLengthControlData(model, scene, 'length-cascade');
+design = designSimscapePoseLengthController(model, config);
+simscapeData = buildSimscapeLengthControlData(model, scene, 'pose-length-cascade');
 controller = simscapeData.controller;
 
 assignin('base', 'stewart', simscapeData.stewart);
@@ -42,31 +40,21 @@ assignin('base', 'ground', simscapeData.ground);
 assignin('base', 'disturbances', simscapeData.disturbances);
 assignin('base', 'references', references);
 assignin('base', 'controller', controller);
-assignin('base', 'lengthCascadeConfig', config);
-assignin('base', 'lengthCascadeDesign', design);
+assignin('base', 'poseLengthConfig', config);
+assignin('base', 'poseLengthDesign', design);
 assignin('base', 'lengthServoConfig', config);
 
 modelName = 'stewart_platform_model';
 modelFile = fullfile(projectRoot, 'matlab', [modelName, '.slx']);
 load_system(modelFile);
-configureSimscapeGravity(modelName, simscapeData.gravity, ...
-    'enabled', config.gravityEnabled);
-set_param(modelName, 'StopTime', num2str(lengthRefs.t(end), 16));
+configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', config.gravityEnabled);
+set_param(modelName, 'StopTime', num2str(refs.t(end), 16));
 
-setup = struct();
-setup.projectRoot = projectRoot;
-setup.optRoot = optRoot;
-setup.modelName = modelName;
-setup.modelFile = modelFile;
-setup.trajectoryFile = trajectoryFile;
-setup.refs = lengthRefs;
-setup.references = references;
-setup.model = model;
-setup.scene = scene;
-setup.simscapeData = simscapeData;
-setup.controller = controller;
-setup.config = config;
-setup.design = design;
+setup = struct('projectRoot', projectRoot, 'optRoot', optRoot, ...
+    'modelName', modelName, 'modelFile', modelFile, ...
+    'trajectoryFile', trajectoryFile, 'refs', refs, 'references', references, ...
+    'model', model, 'scene', scene, 'simscapeData', simscapeData, ...
+    'controller', controller, 'config', config, 'design', design);
 end
 
 function trajectoryFile = resolveTrajectoryFile(trajectoryFile, projectRoot)
@@ -78,8 +66,8 @@ if isfile(projectRelativeFile)
     trajectoryFile = projectRelativeFile;
     return;
 end
-error('prepareSimscapeLengthCascadeControl:TrajectoryFileNotFound', ...
-    '未找到长度串级参考轨迹文件：%s', trajectoryFile);
+error('prepareSimscapePoseLengthControl:TrajectoryFileNotFound', ...
+    '未找到位姿外环长度输入参考轨迹：%s', trajectoryFile);
 end
 
 function ensureSimscapeConfiguration(projectRoot)

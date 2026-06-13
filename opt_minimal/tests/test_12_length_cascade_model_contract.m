@@ -12,6 +12,8 @@ controllerControls = string(cellfun(@(block) get_param(block, 'VariantControl'),
     controllerVariants, 'UniformOutput', false));
 assert(any(controllerControls == "controller.type == 8"), ...
     '顶层控制器缺少 controller.type == 8 长度串级分支。');
+assert(any(controllerControls == "controller.type == 9"), ...
+    '顶层控制器缺少 controller.type == 9 位姿反馈长度串级分支。');
 
 strutFile = fullfile(projectRoot, 'simscape_subsystems', 'stewart_strut.slx');
 load_system(strutFile);

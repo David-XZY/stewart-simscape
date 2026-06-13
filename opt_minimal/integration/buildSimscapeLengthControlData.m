@@ -9,7 +9,7 @@ function simscapeData = buildSimscapeLengthControlData(model, scene, controlMode
 arguments
     model struct
     scene struct
-    controlMode char {mustBeMember(controlMode, {'force', 'length-cascade'})} = 'force'
+    controlMode char {mustBeMember(controlMode, {'force', 'length-cascade', 'pose-length-cascade'})} = 'force'
 end
 
 regularizationMass = 1e-3;
@@ -59,6 +59,9 @@ ground = initializeGround('type', 'none');
 if strcmp(controlMode, 'length-cascade')
     stewart.actuators.type = 5;
     controller = initializeController('type', 'length-cascade');
+elseif strcmp(controlMode, 'pose-length-cascade')
+    stewart.actuators.type = 5;
+    controller = initializeController('type', 'pose-length-cascade');
 else
     controller = initializeController('type', 'ref-track-L');
 end

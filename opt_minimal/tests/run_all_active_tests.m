@@ -20,6 +20,9 @@ testFiles = {
     'test_18_pose_force_preparation_contract'
     'test_19_pose_force_full_tracking'
     'test_20_hermite_reference_contract'
+    'test_21_pose_length_control_contract'
+    'test_22_pose_length_preparation_contract'
+    'test_23_pose_length_full_tracking'
 };
 
 for index = 1:numel(testFiles)

@@ -9,6 +9,7 @@
 | `run_01_ihsid_trajectory.m` | standard IHSID 40x20 limited-memory 唯一主入口 | 活动 | 用户直接运行 | 由旧主入口改名并收敛为 IHSID |
 | `run_02_simscape_length_control.m` | 自动运行或手动准备力输入位姿轨迹跟踪 | 活动 | 用户直接运行 | 重力开启的力驱动控制、Run03 对比与完整硬验收入口 |
 | `run_03_simscape_length_cascade_control.m` | 自动运行或手动准备纯长度串级控制 | 活动 | 用户直接运行 | 默认 1.0/0.7 增益缩放的长度伺服与完整硬验收入口 |
+| `run_04_simscape_pose_length_control.m` | 自动运行或手动准备位姿反馈纯腿长输入控制 | 活动 | 用户直接运行 | 在 Run03 上增加平台位姿误差反馈，方便与 Run02 对比 |
 | `README.md` | 运行、验收和 Simscape 接入说明 | 活动 | 维护者 | 替代旧 HS 总说明 |
 | `FILE_CATALOG.md` | 逐文件分类目录 | 活动 | 维护者 | 便于交接与后续更新 |
 
@@ -64,10 +65,15 @@
 | `integration/designSimscapeLengthCascadeController.m` | 逐腿自动整定位置 P 与速度 PIDF | 活动 | `run_03`、测试 | 仿真前自整定 |
 | `integration/prepareSimscapeLengthCascadeControl.m` | 准备纯长度 Variant、参考与基础工作区 | 活动 | `run_03`、测试 | 自动/手动模式统一入口 |
 | `integration/evaluateSimscapeLengthCascadeControl.m` | 解析纯长度日志并执行无力指标硬验收 | 活动 | `run_03`、测试 | 纯长度控制结果验收 |
+| `integration/makeSimscapePoseLengthConfig.m` | 构建位姿反馈纯腿长配置 | 活动 | `run_04`、测试 | 固化位姿反馈增益与腿长修正限幅 |
+| `integration/designSimscapePoseLengthController.m` | 构造位姿误差到腿长修正映射 | 活动 | `run_04`、测试 | 复用 Run03 串级控制与初始位姿雅可比 |
+| `integration/prepareSimscapePoseLengthControl.m` | 准备位姿反馈纯腿长 Variant 与基础工作区 | 活动 | `run_04`、测试 | 自动/手动模式统一入口 |
+| `integration/evaluateSimscapePoseLengthControl.m` | 解析并验收位姿反馈纯腿长结果 | 活动 | `run_04`、测试 | 复用 Run03 硬验收并增加修正量诊断 |
 | `integration/installSimscapeLengthCascadeVariants.m` | 在现有 SLX 中安装长度控制与执行器 Variant | 活动 | 模型维护 | 保持 SLX 增量修改可复现 |
 | `tools/animateStewartTrajectory.m` | 离线动画 | 工具 | 主入口 | 保留维护价值 |
 | `tools/exportStewartMountingDiagram.m` | 装配图导出 | 工具 | 绘图流程 | 保留维护价值 |
 | `tools/exportRun02Run03MeetingFigures.m` | 导出 Run02/Run03 总览、对比与纹波诊断 FIG/PNG | 工具 | 用户直接调用 | 汇报图与纹波来源诊断可复现导出 |
+| `tools/exportRun02Run03Run04Comparison.m` | 导出 Run02/Run03/Run04 共同误差与位姿指标对比 | 工具 | 用户直接调用 | 对比执行器输入和位姿反馈结构 |
 | `tools/plotOptResult.m` | 轨迹与约束检查图 | 工具 | 主入口 | 标准样例图来源 |
 
 ## 活动测试
@@ -89,6 +95,7 @@
 | `tests/test_16_meeting_figure_export_contract.m` | 验证四组 FIG/PNG 与纹波诊断字段 | 测试 | 测试入口 | 汇报图和纹波诊断导出契约 |
 | `tests/test_17_pose_force_control_contract.m` 至 `test_19_pose_force_full_tracking.m` | 验证位姿力配置、整定、准备、综合分和完整轨迹 | 测试 | 测试入口 | 新 Run02 控制结构契约 |
 | `tests/test_20_hermite_reference_contract.m` | 验证 Hermite 重建精确通过节点 q/qd | 测试 | 测试入口 | 防止参考重建退化为线性插值 |
+| `tests/test_21_pose_length_control_contract.m` 至 `test_23_pose_length_full_tracking.m` | 验证 Run04 配置、准备链路和完整轨迹 | 测试 | 测试入口 | 防止位姿反馈纯腿长控制回归 |
 
 ## 归档源码
 

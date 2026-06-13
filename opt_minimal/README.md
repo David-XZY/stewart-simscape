@@ -6,6 +6,8 @@ Simscape 验证入口为 `run_02_simscape_length_control.m`，采用 IHSID 逆�
 笛卡尔位姿动态反馈，最终执行器输入始终为六腿驱动力。
 纯长度验证入口为 `run_03_simscape_length_cascade_control.m`，仅使用 `t/q/qd`，
 关闭重力并采用位置 P + 速度 PIDF 串级控制。
+位姿反馈纯腿长入口为 `run_04_simscape_pose_length_control.m`，在 Run03 基础上
+将平台位姿误差转换为腿长参考修正，最终执行器仍为理想腿长输入。
 
 ## 快速运行
 
@@ -15,6 +17,7 @@ Simscape 验证入口为 `run_02_simscape_length_control.m`，采用 IHSID 逆�
 run('opt_minimal/run_01_ihsid_trajectory.m')
 run('opt_minimal/run_02_simscape_length_control.m')
 run('opt_minimal/run_03_simscape_length_cascade_control.m')
+run('opt_minimal/run_04_simscape_pose_length_control.m')
 ```
 
 运行期产物写入 `opt_minimal/results/`，该目录除 `.gitkeep` 外均被 Git 忽略。
@@ -148,3 +151,23 @@ tracking anti-windup 和加速度斜率限制。长度模式关闭重力，顶�
 标准全轨迹硬验收要求信号有限、自动整定闭环稳定、腿长/腿速/腿加速度满足约束，
 且峰值腿长误差不超过 `5 mm`、平移误差不超过 `10 mm`、转角误差不超过 `1 deg`。
 终点腿长误差 `0.1 mm` 仅作为诊断目标，不决定硬通过。
+
+## Simscape 位姿反馈纯腿长输入控制
+
+`run_04` 保留 Run03 的理想腿长执行器、位置 P 与速度 PIDF，只在长度误差计算前加入
+平台位姿反馈：
+
+```text
+deltaLpose = Jq(qHome) * 0.3 * (r - Xr)
+effectiveLengthError = rL + deltaLpose - dLm
+```
+
+默认腿长修正限幅为 `2 mm`，重力关闭。该结构用于分离“增加平台位姿反馈”本身的效果，
+并与 Run02 的力输入位姿反馈及 Run03 的纯腿长输入进行公平对比。运行
+`exportRun02Run03Run04Comparison` 可导出三种控制结构的共同误差时序和位姿指标图。
+
+默认完整轨迹结果中，Run04 的平移峰值、转角峰值和腿长峰值误差分别为
+`0.652 mm / 0.0831 deg / 1.397 mm`；相对 Run03 默认结果分别降低约
+`32.7% / 31.1% / 20.8%`。Run04 仍不如 Run02 的力输入位姿反馈，且后半段会把
+位姿残差重新映射为小幅腿长修正纹波，因此它主要作为“相同理想腿长执行器下，
+有无平台位姿反馈”的结构对照。
