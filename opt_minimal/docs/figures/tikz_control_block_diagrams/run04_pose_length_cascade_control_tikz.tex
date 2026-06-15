@@ -1,0 +1,73 @@
+\documentclass[border=7pt]{standalone}
+\input{control_block_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[node distance=10mm and 8mm]
+  \node[title] (title) {Run04：位姿外环修正的理想腿长串级控制};
+
+  \node[sumPM, below=17mm of title, xshift=-72mm] (sumq) {};
+  \node[controller, right=of sumq] (lpf) {低通滤波\\[1mm]LPF};
+  \node[mapping, right=of lpf] (jq) {时变参考 Jacobian\\[1mm]$J_q(q_{\mathrm{ref}})$};
+  \node[controller, right=of jq] (kpose) {位姿反馈增益\\[1mm]$K_{\mathrm{pose}}$};
+  \node[limiter, right=of kpose] (posesat) {腿长修正限幅\\[1mm]sat};
+  \coordinate[left=16mm of sumq] (qref);
+  \draw[signal, draw=blue] (qref) -- node[reflabel, above] {$q_{\mathrm{ref}}$} (sumq);
+  \draw[signal] (sumq) -- node[siglabel, above] {$e_q$} (lpf);
+  \draw[signal] (lpf) -- (jq);
+  \draw[mappingline] (jq) -- (kpose);
+  \draw[feedback] (kpose) -- (posesat);
+
+  \node[sumPP, below=32mm of sumq] (sumcorr) {};
+  \node[sumPM, right=of sumcorr] (sumL) {};
+  \node[controller, right=of sumL] (kp) {位置 P\\[1mm]$K_{\mathrm{pos}}$};
+  \node[sumPP, right=of kp] (sumcmd) {};
+  \node[limiter, right=of sumcmd] (speedlimit) {腿速限幅};
+  \node[limiter, right=of speedlimit] (acclimit) {加速度限制};
+  \node[sumPM, right=of acclimit] (sumv) {};
+  \node[controller, right=of sumv] (pidv) {腿速 PIDF\\[1mm]$K_v(z)$};
+  \node[limiter, right=of pidv] (servolimit) {伺服加速度\\限制};
+  \node[plant, right=of servolimit, text width=30mm] (actuator)
+    {Length-Servo\\理想运动执行器};
+
+  \coordinate[left=16mm of sumcorr] (Lref);
+  \coordinate[above=14mm of sumcmd] (Ldref);
+  \coordinate[right=17mm of actuator] (Lout);
+
+  \draw[signal, draw=blue] (Lref) -- node[reflabel, above] {$L_{\mathrm{ref}}$} (sumcorr);
+  \draw[feedback] (posesat.south) -- ++(0,-13mm) -| (sumcorr.north);
+  \node[fblabel, right=1mm of posesat.south, yshift=-7mm] {$\Delta L_{\mathrm{pose}}$};
+  \draw[signal] (sumcorr) -- node[siglabel, above] {$L_{\mathrm{corr}}$} (sumL);
+  \draw[signal] (sumL) -- node[siglabel, above] {$e_L$} (kp);
+  \draw[feedback] (kp) -- node[fblabel, above] {$\Delta\dot L$} (sumcmd);
+  \draw[signal] (sumcmd) -- node[siglabel, above] {$\dot L_{\mathrm{raw}}$} (speedlimit);
+  \draw[signal] (speedlimit) -- (acclimit);
+  \draw[signal] (acclimit) -- node[siglabel, above] {$\dot L_{\mathrm{cmd}}$} (sumv);
+  \draw[signal] (sumv) -- node[siglabel, above] {$e_{\dot L}$} (pidv);
+  \draw[feedback] (pidv) -- (servolimit);
+  \draw[signal] (servolimit) -- node[siglabel, above] {$\dot L_{\mathrm{servo}}$} (actuator);
+  \draw[signal] (actuator) -- node[siglabel, above] {$L_{\mathrm{act}}$} (Lout);
+  \draw[feedforward] (Ldref) -- node[fflabel, right] {$\dot L_{\mathrm{ref}}$} (sumcmd);
+
+  \coordinate (tracktap) at ($(servolimit.east)!0.45!(actuator.west)$);
+  \draw[tracking] (tracktap) |- node[fblabel, near start, above] {tracking} ($(pidv.north)+(0,8mm)$) -| (pidv.north);
+  \node[branch] (bL) at ($(actuator.east)!0.55!(Lout)$) {};
+  \draw[feedback] (bL) |- ($(sumL.south)+(0,-22mm)$) -| (sumL.south);
+  \draw[feedback] (actuator.south) |- node[fblabel, near start, right] {$\dot L_{\mathrm{act}}$}
+    ($(sumv.south)+(0,-13mm)$) -| (sumv.south);
+  \node[branch] (bq) at ($(actuator.north)+(0,1mm)$) {};
+  \draw[feedback] (bq) |- ($(sumq.north)+(0,11mm)$) -| (sumq.north);
+
+  \markSumPM{sumq}
+  \markSumPP{sumcorr}
+  \markSumPM{sumL}
+  \markSumPP{sumcmd}
+  \markSumPM{sumv}
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(sumq)(lpf)(jq)(kpose)(posesat), label={[grouplabel]below:位姿修正外环}] {};
+    \node[group, fit=(sumcorr)(sumL)(kp)(sumcmd), label={[grouplabel]below:腿长位置环}] {};
+    \node[group, fit=(speedlimit)(acclimit), label={[grouplabel]below:腿速参考整形}] {};
+    \node[group, fit=(sumv)(pidv)(servolimit), label={[grouplabel]below:腿速内环}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

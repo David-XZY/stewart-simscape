@@ -1,0 +1,23 @@
+{
+  "pdf": "D:\\NPU\\Matlab_code\\stewart-simscape\\opt_minimal\\docs\\figures\\tikz_control_block_diagrams\\run03_length_cascade_control_tikz.pdf",
+  "mode": "research",
+  "text_plot_overlap_check": false,
+  "plot_label_regex": null,
+  "page": {
+    "width": 857.0700073242188,
+    "height": 169.7100067138672
+  },
+  "text_box_count": 32,
+  "title": {
+    "text": "Run03\uff1a\u7406\u60f3\u817f\u957f\u4e32\u7ea7\u63a7\u5236",
+    "x0": 248.88101196289062,
+    "y0": 10.56338119506836,
+    "x1": 393.0148010253906,
+    "y1": 23.295669555664062,
+    "colors": [
+      2503224
+    ]
+  },
+  "issues": [],
+  "status": "pass"
+}

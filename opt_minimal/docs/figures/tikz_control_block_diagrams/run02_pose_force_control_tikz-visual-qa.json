@@ -1,0 +1,23 @@
+{
+  "pdf": "D:\\NPU\\Matlab_code\\stewart-simscape\\opt_minimal\\docs\\figures\\tikz_control_block_diagrams\\run02_pose_force_control_tikz.pdf",
+  "mode": "research",
+  "text_plot_overlap_check": false,
+  "plot_label_regex": null,
+  "page": {
+    "width": 649.0399780273438,
+    "height": 132.8800048828125
+  },
+  "text_box_count": 20,
+  "title": {
+    "text": "Run02\uff1a\u4f4d\u59ff\u53cd\u9988\u529b\u63a7\u5236",
+    "x0": 178.32400512695312,
+    "y0": 10.572383880615234,
+    "x1": 310.5025939941406,
+    "y1": 23.304672241210938,
+    "colors": [
+      2503224
+    ]
+  },
+  "issues": [],
+  "status": "pass"
+}

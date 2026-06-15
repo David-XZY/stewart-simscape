@@ -176,3 +176,41 @@ effectiveLengthError = rL + deltaLpose - dLm
 `0.486 mm / 0.0606 deg / 0.896 mm`。相对旧固定初始雅可比 Run04，三项峰值分别降低
 约 `25.5% / 27.1% / 35.9%`，`5 s` 后等效位姿高频纹波 RMS 从约 `0.0482 mm`
 降至 `0.00937 mm`，降低约 `80.6%`。
+## PWM 物理执行器与力辨识控制
+
+新增的方案一由两个明确分离的仿真模型组成：
+
+1. `makeHighFidelityPwmActuator` 构造高保真物理教师模型，包含平均值 H 桥、电气动态、反电动势、丝杠传动、摩擦死区、Stribeck 摩擦和饱和；真实力和电流仅用于训练标签与事后评价。
+2. `trainGrayNarxForceIdentifier` 使用可实际采集的 PWM、编码器腿速/加速度构造灰箱模型，并用残差 NARX 补偿未建模非线性。
+
+控制比较中，两条线从同一初态独立运行并驱动同一个高保真物理对象。基准线读取真实位姿和真实力；辨识线只读取编码器腿长、真实三轴姿态和估计力。运行顺序为：
+
+```matlab
+run('opt_minimal/run_05_generate_pwm_identification_data.m')
+run('opt_minimal/run_06_train_pwm_force_identifier.m')
+run('opt_minimal/run_07_compare_pwm_pose_force_control.m')
+```
+
+`stewart_strut.slx` 中新增 `stewart.actuators.type==6` 的 `PWM-Physical` Variant，复用现有支链和关节结构，用于平均值 PWM 物理链的 Simscape 接入与模型更新检查。单轴开关级模型用于校验平均值模型，不作为完整平台主仿真。
+
+运行 `exportPwmIdentificationEvidence` 可从最新辨识和双线控制结果导出物理特性、数据覆盖、辨识验证、开关级校验和完整轨迹对比图，同时生成 `summary.md` 与 `metrics.csv` 数值汇总。
+
+运行 `exportIdealPwmMacroMotionComparison` 可将 Run02 纯理想力执行器、PWM 物理对象加真值反馈、PWM 物理对象加辨识反馈统一到同一时间网格，对比宏观空间轨迹、位姿误差范数和逐自由度误差。
+
+PWM 控制与估计默认采用 `5 ms` 周期。辨识数据由平台可实现位姿轨迹经 IK/Jacobian 生成耦合腿速，并使用与部署一致的融合位姿腿速。PWM 双线控制采用平移 PID 型外环、低带宽力反馈与灰箱加残差 NARX 力估计；完整轨迹硬验收要求三个平移轴峰值误差分别不超过 `1 mm`。
+## 相对编码器与 IMU 位姿估计
+
+PWM 辨识反馈线不再读取运行时 `x/y/z` 或完整位姿测量。实验开始时，平台在六腿固定最短限位保持静止，
+使用一次性回零位姿建立 `anchorPose` 和 `anchorLength`；运动阶段仅向公共 UKF 输入：
+
+- 六腿相对位移 `L(q)-anchorLength`；
+- 三轴姿态；
+- 三轴加速度，支持世界系线加速度和机体系原始比力；
+- 三轴角速度。
+
+公共 UKF 状态为 `[q(6); qd(6); accelerometerBias(3); gyroBias(3)]`。闭环启动前默认在回零位姿预热
+`0.2 s`，固定姿态、加速度计和陀螺仪偏置通过回零标定消除，UKF 在线估计标定后的残余慢漂。
+
+独立估计器基准始终保留 `1 mm RMS` 编码器噪声结果；若其无法满足极限精度目标，使用已批准的
+`0.5 mm RMS` 档进行最终验收。`test_35_pose_imu_ukf_precision` 同时验证极限精度和初始位置锚点误差：
+初始绝对位置误差会保留为整段常量偏移，但不会破坏之后的相对运动恢复。

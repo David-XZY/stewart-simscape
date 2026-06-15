@@ -1,0 +1,23 @@
+{
+  "pdf": "D:\\NPU\\Matlab_code\\stewart-simscape\\opt_minimal\\docs\\figures\\tikz_control_block_diagrams\\run04_pose_length_cascade_control_tikz.pdf",
+  "mode": "research",
+  "text_plot_overlap_check": false,
+  "plot_label_regex": null,
+  "page": {
+    "width": 877.6599731445312,
+    "height": 275.3699951171875
+  },
+  "text_box_count": 49,
+  "title": {
+    "text": "Run04\uff1a\u4f4d\u59ff\u5916\u73af\u4fee\u6b63\u7684\u7406\u60f3\u817f\u957f\u4e32\u7ea7\u63a7\u5236",
+    "x0": 153.17999267578125,
+    "y0": 10.594383239746094,
+    "x1": 381.00018310546875,
+    "y1": 23.326671600341797,
+    "colors": [
+      2503224
+    ]
+  },
+  "issues": [],
+  "status": "pass"
+}

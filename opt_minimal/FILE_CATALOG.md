@@ -211,3 +211,27 @@ writeMidtermReportFigures.m
 ## 删除内容
 
 重复顶层/历史测试、FATROP 调试矩阵、失败或重复 `results/`、过时副本已删除。需要追溯时使用远端备份分支 `backup/pre-opt-minimal-ihsid-20260607`。
+## PWM 执行器辨识与控制扩展
+
+| 文件/目录 | 用途 | 状态 |
+|---|---|---|
+| `run_05_generate_pwm_identification_data.m` | 生成含 PWM、编码器量化、位姿观测和隐藏真值的数据集 | 活动 |
+| `run_06_train_pwm_force_identifier.m` | 训练并验证灰箱加残差 NARX 力估计器 | 活动 |
+| `run_07_compare_pwm_pose_force_control.m` | 独立比较真值基准线和辨识反馈线 | 活动 |
+| `actuator_identification/` | 高保真物理教师、辨识器、PWM 力内环、双线仿真与验收 | 活动 |
+| `integration/installSimscapePwmActuatorVariant.m` | 在现有支链 SLX 中增量安装 `PWM-Physical` Variant | 活动 |
+| `tools/exportPwmIdentificationEvidence.m` | 导出 PWM 物理模型、辨识与双线控制全链路图表和数值证据 | 工具 |
+| `tools/exportIdealPwmMacroMotionComparison.m` | 对比纯理想执行器与 PWM 真值/辨识反馈线的宏观运动表现 | 工具 |
+| `tests/test_24...test_30` | 覆盖物理模型、辨识、控制、SLX、开关校验和完整轨迹 | 测试 |
+
+当前 PWM 完整轨迹验收采用每个平移轴峰值误差 `<= 1 mm`，而不是旧的整体 `10 mm` 宽松阈值。
+## 相对编码器与 IMU UKF
+
+| 文件 | 用途 | 状态 |
+|---|---|---|
+| `actuator_identification/makePoseImuUkfConfig.m` | 构造回零锚定 UKF 配置 | 活动 |
+| `actuator_identification/initializePoseImuUkf.m` | 初始化公共 18 状态 UKF | 活动 |
+| `actuator_identification/stepPoseImuUkf.m` | 使用 IMU 预测、相对腿长和姿态校正 | 活动 |
+| `actuator_identification/simulatePoseImuSensors.m` | 生成不含运行时位置测量的传感器数据 | 活动 |
+| `actuator_identification/estimatePoseImuUkfSeries.m` | 批量运行世界系/原始比力 UKF | 活动 |
+| `tests/test_32...test_35` | 公共接口、传感器隔离、双模式恢复和极限精度测试 | 测试 |

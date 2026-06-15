@@ -23,6 +23,19 @@ testFiles = {
     'test_21_pose_length_control_contract'
     'test_22_pose_length_preparation_contract'
     'test_23_pose_length_full_tracking'
+    'test_24_pwm_actuator_physics_contract'
+    'test_25_pwm_force_identification_contract'
+    'test_26_pwm_force_controller_contract'
+    'test_27_pwm_actuator_simscape_contract'
+    'test_28_pwm_actuator_mapping_and_switching'
+    'test_29_pwm_dual_line_control_contract'
+    'test_30_pwm_full_tracking'
+    'test_31_pwm_pose_estimator_benchmark'
+    'test_32_pose_imu_ukf_contract'
+    'test_33_pose_imu_sensor_contract'
+    'test_34_pose_imu_ukf_recovery'
+    'test_35_pose_imu_ukf_precision'
+    'test_36_pose_imu_datasheet_parameters'
 };
 
 for index = 1:numel(testFiles)

@@ -9,7 +9,7 @@ function simscapeData = buildSimscapeLengthControlData(model, scene, controlMode
 arguments
     model struct
     scene struct
-    controlMode char {mustBeMember(controlMode, {'force', 'length-cascade', 'pose-length-cascade'})} = 'force'
+    controlMode char {mustBeMember(controlMode, {'force', 'length-cascade', 'pose-length-cascade', 'pwm-force'})} = 'force'
 end
 
 regularizationMass = 1e-3;
@@ -66,6 +66,11 @@ if strcmp(controlMode, 'length-cascade')
 elseif strcmp(controlMode, 'pose-length-cascade')
     stewart.actuators.type = 5;
     controller = initializeController('type', 'pose-length-cascade');
+elseif strcmp(controlMode, 'pwm-force')
+    stewart.actuators.type = 6;
+    pwmActuator = makeHighFidelityPwmActuator();
+    stewart.pwmActuator = pwmActuator;
+    controller = initializeController('type', 'ref-track-X');
 else
     controller = initializeController('type', 'ref-track-L');
 end
@@ -82,6 +87,9 @@ simscapeData.controlMode = controlMode;
 simscapeData.disturbances = disturbances;
 simscapeData.gravity = model.g;
 simscapeData.mapping = mapping;
+if strcmp(controlMode, 'pwm-force')
+    simscapeData.pwmActuator = pwmActuator;
+end
 simscapeData.approximations = struct( ...
     'actuatorStiffness', zeros(6, 1), ...
     'actuatorDamping', zeros(6, 1), ...

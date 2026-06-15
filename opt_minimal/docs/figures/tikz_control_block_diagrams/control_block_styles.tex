@@ -1,0 +1,79 @@
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setCJKmainfont{Microsoft YaHei}
+\setCJKsansfont{Microsoft YaHei}
+
+\definecolor{ink}{HTML}{263238}
+\definecolor{blue}{HTML}{2563A5}
+\definecolor{teal}{HTML}{16866F}
+\definecolor{gold}{HTML}{C57A17}
+\definecolor{violet}{HTML}{6B58A5}
+\definecolor{softblue}{HTML}{EDF4F8}
+\definecolor{softteal}{HTML}{EEF8F5}
+\definecolor{softgold}{HTML}{FBF5E8}
+\definecolor{softviolet}{HTML}{F3F0F9}
+\definecolor{softgray}{HTML}{F7F8F9}
+
+\tikzset{
+  font=\sffamily\small,
+  >=Latex,
+  signal/.style={draw=ink, line width=0.75pt, -{Latex[length=2.2mm]}},
+  feedback/.style={draw=teal, line width=0.9pt, -{Latex[length=2.2mm]}},
+  tracking/.style={draw=teal, dashed, line width=0.8pt, -{Latex[length=2.0mm]}},
+  feedforward/.style={draw=gold, line width=0.9pt, -{Latex[length=2.2mm]}},
+  mappingline/.style={draw=violet, line width=0.85pt, -{Latex[length=2.2mm]}},
+  block/.style={
+    draw=ink!72,
+    fill=softgray,
+    rounded corners=1.2pt,
+    minimum height=11mm,
+    minimum width=22mm,
+    text width=22mm,
+    align=center,
+    inner sep=2.4mm,
+    line width=0.75pt
+  },
+  controller/.style={block, fill=softteal},
+  mapping/.style={block, fill=softviolet},
+  limiter/.style={block, fill=softgold},
+  plant/.style={block, fill=softblue},
+  summing/.style={
+    circle,
+    draw=ink!75,
+    fill=white,
+    minimum size=7mm,
+    inner sep=0pt,
+    line width=0.75pt
+  },
+  sumglyph/.style={font=\sffamily\scriptsize, text=ink, inner sep=0pt},
+  sumPM/.style={
+    summing
+  },
+  sumPP/.style={
+    summing
+  },
+  branch/.style={circle, fill=teal, draw=teal, inner sep=0pt, minimum size=1.5mm},
+  group/.style={draw=ink!30, dashed, rounded corners=2pt, inner sep=4mm},
+  grouplabel/.style={font=\sffamily\footnotesize\bfseries, text=ink!75, fill=white, inner sep=1pt},
+  siglabel/.style={font=\sffamily\footnotesize, text=ink, fill=white, inner sep=1pt},
+  reflabel/.style={siglabel, text=blue},
+  fflabel/.style={siglabel, text=gold},
+  fblabel/.style={siglabel, text=teal},
+  title/.style={font=\sffamily\bfseries\large, text=ink}
+}
+
+\newcommand{\markSumPM}[1]{%
+  \node[sumglyph] at ([xshift=-1.75mm,yshift=0.45mm]#1.center) {$+$};
+  \node[sumglyph] at ([xshift=0.45mm,yshift=-1.85mm]#1.center) {$-$};
+}
+
+\newcommand{\markSumPP}[1]{%
+  \node[sumglyph] at ([xshift=-1.75mm,yshift=-0.45mm]#1.center) {$+$};
+  \node[sumglyph] at ([xshift=0.45mm,yshift=1.85mm]#1.center) {$+$};
+}

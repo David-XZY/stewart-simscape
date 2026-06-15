@@ -1,0 +1,38 @@
+\documentclass[border=7pt]{standalone}
+\input{control_block_styles.tex}
+
+\begin{document}
+\begin{tikzpicture}[node distance=13mm and 13mm]
+  \node[title] (title) {Run02：位姿反馈力控制};
+
+  \node[sumPM, below=15mm of title, xshift=-62mm] (sumq) {};
+  \node[controller, right=of sumq] (pid) {笛卡尔 PIDF\\[1mm]$K_x(s)$};
+  \node[mapping, right=of pid] (map) {固定力映射\\[1mm]$J_v(q_0)^{-T}$};
+  \node[sumPP, right=of map] (sumf) {};
+  \node[plant, right=of sumf] (act) {理想力执行器};
+  \node[plant, right=of act] (platform) {Stewart 平台\\[1mm]$G_{F\rightarrow q}$};
+
+  \coordinate[left=18mm of sumq] (qref);
+  \coordinate[right=18mm of platform] (qout);
+  \coordinate[above=15mm of sumf] (fff);
+
+  \draw[signal, draw=blue] (qref) -- node[reflabel, above] {$q_{\mathrm{ref}}$} (sumq);
+  \draw[signal] (sumq) -- node[siglabel, above] {$e_q$} (pid);
+  \draw[feedback] (pid) -- node[fblabel, above] {$\Delta W$} (map);
+  \draw[feedback] (map) -- node[fblabel, above] {$F_{\mathrm{fb}}$} (sumf);
+  \draw[signal] (sumf) -- node[siglabel, above] {$F_{\mathrm{cmd}}$} (act);
+  \draw[signal] (act) -- (platform);
+  \draw[signal] (platform) -- node[siglabel, above] {$q_{\mathrm{act}}$} (qout);
+  \draw[feedforward] (fff) -- node[fflabel, right] {$F_{\mathrm{FF}}$} (sumf);
+
+  \node[branch] (bq) at ($(platform.east)!0.55!(qout)$) {};
+  \draw[feedback] (bq) |- ($(sumq.south)+(0,-13mm)$) -| (sumq.south);
+
+  \markSumPM{sumq}
+  \markSumPP{sumf}
+
+  \begin{scope}[on background layer]
+    \node[group, fit=(pid)(map), label={[grouplabel]below:位姿反馈补偿}] {};
+  \end{scope}
+\end{tikzpicture}
+\end{document}
