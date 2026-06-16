@@ -13,7 +13,7 @@ config = makePoseImuUkfConfig(model, sampleTime, model.qHome);
 
 gravity = 9.80665;
 assert(max(abs(config.orientationNoiseStd - deg2rad([0.1; 0.1; 0.5]))) < eps);
-assert(max(abs(config.initialOrientationStd - deg2rad(0.0055))) < eps);
+assert(max(abs(config.initialOrientationStd - deg2rad([0.1; 0.1; 0.5]))) < eps);
 assert(abs(config.accelerationNoiseStd - 1e-3 * gravity) < eps);
 assert(abs(config.angularVelocityNoiseStd - deg2rad(0.07)) < eps);
 assert(max(abs(config.accelerometerBiasRandomWalkStd - gravity * [10; 10; 30] * 1e-6)) < eps);
@@ -24,7 +24,10 @@ trajectory = struct('t', [0, sampleTime], ...
 measurements = simulatePoseImuSensors(trajectory, model);
 sensor = measurements.sensorModel;
 
-assert(max(abs(sensor.orientationNoiseStd - deg2rad(0.0055))) < eps);
+assert(abs(sensor.orientationResolution - deg2rad(0.0055)) < eps);
+assert(max(abs(sensor.orientationNoiseStd - deg2rad([0.1; 0.1; 0.5]))) < eps);
+assert(all(abs(measurements.orientation / sensor.orientationResolution - ...
+    round(measurements.orientation / sensor.orientationResolution)) < 1e-10, 'all'));
 assert(abs(sensor.accelerationNoiseStd - 1e-3 * gravity) < eps);
 assert(max(abs(sensor.accelerometerBias - gravity * [20; -20; 40] * 1e-3)) < eps);
 assert(max(abs(sensor.accelerometerCalibrationResidual - ...

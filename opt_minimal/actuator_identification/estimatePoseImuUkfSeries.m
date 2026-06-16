@@ -13,6 +13,8 @@ estimator = initializePoseImuUkf(config);
 sampleCount = size(measurements.relativeLength, 2);
 pose = zeros(6, sampleCount);
 velocity = zeros(6, sampleCount);
+predictedPose = zeros(6, sampleCount);
+predictedVelocity = zeros(6, sampleCount);
 accelerometerBias = zeros(3, sampleCount);
 gyroBias = zeros(3, sampleCount);
 
@@ -31,6 +33,8 @@ for sampleIndex = 1:sampleCount
             'accelerationMode 必须为 world 或 specificForce。');
     end
     [estimator, output] = stepPoseImuUkf(estimator, sample);
+    predictedPose(:, sampleIndex) = output.predictedPose;
+    predictedVelocity(:, sampleIndex) = output.predictedVelocity;
     pose(:, sampleIndex) = output.pose;
     velocity(:, sampleIndex) = output.velocity;
     accelerometerBias(:, sampleIndex) = output.accelerometerBias;
@@ -38,6 +42,8 @@ for sampleIndex = 1:sampleCount
 end
 
 estimate = struct();
+estimate.predictedPose = predictedPose;
+estimate.predictedVelocity = predictedVelocity;
 estimate.pose = pose;
 estimate.velocity = velocity;
 estimate.accelerometerBias = accelerometerBias;

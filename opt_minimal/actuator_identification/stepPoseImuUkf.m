@@ -20,11 +20,14 @@ end
 
 imuInput = [sample.acceleration(:); sample.angularVelocity(:); modeFlag];
 predict(estimator.filter, imuInput);
+predictedState = estimator.filter.State;
 correct(estimator.filter, [sample.relativeLength(:); sample.orientation(:)]);
 estimator.sampleCount = estimator.sampleCount + 1;
 
 state = estimator.filter.State;
 output = struct();
+output.predictedPose = predictedState(1:6);
+output.predictedVelocity = predictedState(7:12);
 output.pose = state(1:6);
 output.velocity = state(7:12);
 output.accelerometerBias = state(13:15);

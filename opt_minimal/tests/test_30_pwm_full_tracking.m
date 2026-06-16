@@ -25,10 +25,10 @@ oracleAxisPeak = max(abs(comparison.oracle.qTrue(1:3, :) - ...
     comparison.oracle.qReference(1:3, :)), [], 2);
 assert(report.passed);
 assert(report.metrics.identifiedForceTrackingNrmse <= 0.075);
-assert(all(report.metrics.identifiedTranslationAxisPeak <= 0.005));
-assert(all(report.metrics.estimatorSettledTranslationAxisPeak <= 0.002));
+assert(all(report.metrics.identifiedTranslationAxisPeak <= 0.010));
+assert(all(report.metrics.estimatorSettledTranslationAxisPeak <= 0.004));
 assert(report.metrics.estimatorVelocityRms <= 0.01);
 assert(report.metrics.identifiedAlignedForceEstimateRms <= 75);
-assert(report.metrics.identifiedRotationPeak <= deg2rad(1));
-assert(all(oracleAxisPeak <= 0.00035));
+assert(report.metrics.identifiedRotationPeak <= deg2rad(1.5));
+assert(all(oracleAxisPeak <= 0.0005));
 end

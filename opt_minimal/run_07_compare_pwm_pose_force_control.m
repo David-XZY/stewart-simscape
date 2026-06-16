@@ -1,4 +1,4 @@
-%% run_07_compare_pwm_pose_force_control - 比较真值基准线与辨识反馈线
+%% run_07_compare_pwm_pose_force_control - 比较三种 PWM 闭环反馈配置
 clearvars -except pwmIdentifierFile pwmTrajectoryFile pwmComparisonOverrides;
 close all; clc;
 
@@ -45,7 +45,7 @@ plotFile = fullfile(resultDir, ['pwm_pose_force_comparison_', timestamp, '.png']
 save(resultFile, 'teacher', 'identified', 'comparison', 'report', ...
     'identifierFile', 'pwmTrajectoryFile', 'pwmComparisonOverrides');
 plotComparison(plotFile, comparison);
-fprintf('\nPWM 双线控制比较结果：%s\n诊断图：%s\n', resultFile, plotFile);
+fprintf('\nPWM 三线控制比较结果：%s\n诊断图：%s\n', resultFile, plotFile);
 fprintf('辨识线力 NRMSE：%.4f，平移峰值：%.3f mm，旋转峰值：%.3f deg，通过：%d\n', ...
     report.metrics.identifiedForceTrackingNrmse, ...
     1e3 * report.metrics.identifiedTranslationPeak, ...
@@ -75,17 +75,30 @@ function plotComparison(fileName, comparison)
 fig = figure('Color', 'w', 'Visible', 'off', 'Position', [100, 100, 1200, 900]);
 tiledlayout(3, 1, 'TileSpacing', 'compact');
 nexttile;
-plot(comparison.identified.t, 1e3 * ...
-    (comparison.identified.qTrue(1:3, :) - comparison.identified.qReference(1:3, :)).');
-grid on; ylabel('平移误差 (mm)'); title('辨识反馈线位姿跟踪');
+plot(comparison.identified.t, 1e3 * vecnorm( ...
+    comparison.identifiedTruthFeedback.qTrue(1:3, :) - ...
+    comparison.identifiedTruthFeedback.qReference(1:3, :), 2, 1), 'LineWidth', 1.1);
+hold on;
+plot(comparison.identified.t, 1e3 * vecnorm( ...
+    comparison.identified.qTrue(1:3, :) - comparison.identified.qReference(1:3, :), 2, 1), ...
+    'LineWidth', 1.1);
+grid on; ylabel('平移误差范数 (mm)'); title('辨识闭环位姿反馈源消融');
+legend('真值位姿反馈', 'UKF反馈', 'Location', 'best');
 nexttile;
-plot(comparison.identified.t, comparison.identified.targetForce.', '--', ...
-    comparison.identified.t, comparison.identified.trueForce.', 'LineWidth', 0.8);
-grid on; ylabel('力 (N)'); title('目标力与高保真真力');
+plot(comparison.identified.t(2:end), ...
+    vecnorm(comparison.identifiedTruthFeedback.estimatedForce(:, 2:end) - ...
+    comparison.identifiedTruthFeedback.trueForce(:, 1:end - 1), 2, 1), 'LineWidth', 1.1);
+hold on;
+plot(comparison.identified.t(2:end), ...
+    vecnorm(comparison.identified.estimatedForce(:, 2:end) - ...
+    comparison.identified.trueForce(:, 1:end - 1), 2, 1), 'LineWidth', 1.1);
+grid on; ylabel('力估计误差范数 (N)'); title('对齐后的辨识力误差');
+legend('真值位姿反馈', 'UKF反馈', 'Location', 'best');
 nexttile;
-plot(comparison.identified.t(2:end), comparison.identified.estimatedForce(:, 2:end).' - ...
-    comparison.identified.trueForce(:, 1:end - 1).', 'LineWidth', 0.8);
-grid on; xlabel('时间 (s)'); ylabel('估计误差 (N)'); title('灰箱加残差 NARX 力估计误差');
+plot(comparison.identified.t, comparison.identifiedTruthFeedback.pwm.', 'LineWidth', 0.7);
+hold on;
+plot(comparison.identified.t, comparison.identified.pwm.', '--', 'LineWidth', 0.7);
+grid on; xlabel('时间 (s)'); ylabel('PWM'); title('两种辨识闭环的 PWM 命令');
 exportgraphics(fig, fileName, 'Resolution', 180);
 close(fig);
 end

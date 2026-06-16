@@ -25,6 +25,8 @@ assert(numel(estimator.filter.State) == 18);
 % 实物航向角初始不确定度会通过非线性腿长观测产生微小的一步均值偏移。
 assert(max(abs(output.pose - anchorPose)) < 1e-5);
 assert(max(abs(output.velocity)) < 1e-4);
+assert(isfield(output, 'predictedPose'));
+assert(isfield(output, 'predictedVelocity'));
 assert(max(abs(output.accelerometerBias)) < 1e-7);
 assert(max(abs(output.gyroBias)) < 1e-7);
 assert(isequal(config.anchorLength, sgpIK(anchorPose, model).L));

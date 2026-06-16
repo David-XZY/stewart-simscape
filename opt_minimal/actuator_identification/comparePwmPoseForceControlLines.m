@@ -1,5 +1,5 @@
 function comparison = comparePwmPoseForceControlLines(refs, teacher, identified, overrides)
-% comparePwmPoseForceControlLines - 比较真值基准线与辨识反馈线
+% comparePwmPoseForceControlLines - 比较 oracle、辨识真值位姿反馈与辨识 UKF 反馈
 arguments
     refs struct
     teacher struct
@@ -13,6 +13,8 @@ reference = buildReference(refs, options);
 
 comparison = struct();
 comparison.oracle = simulateLine('oracle', reference, model, teacher, identified, options);
+comparison.identifiedTruthFeedback = simulateLine( ...
+    'identifiedTruthFeedback', reference, model, teacher, identified, options);
 comparison.identified = simulateLine('identified', reference, model, teacher, identified, options);
 comparison.metrics = buildMetrics(comparison, teacher);
 comparison.options = options;
@@ -28,7 +30,8 @@ options.poseEstimatorMode = "ukf";
 options.sensorNoiseEnabled = true;
 options.sensorRandomSeed = 41;
 options.encoderNoiseStd = 5e-4;
-options.orientationNoiseStd = deg2rad(0.0055);
+options.orientationResolution = deg2rad(0.0055);
+options.orientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.ukfOrientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.orientationBias = deg2rad([0.1; -0.1; 0.5]);
 options.accelerationNoiseStd = 9.80665e-3;
@@ -40,6 +43,10 @@ options.orientationCalibrationResidual = zeros(3, 1);
 options.accelerometerCalibrationResidual = 9.80665 * [15; -15; 35] * 1e-6;
 options.gyroCalibrationResidual = deg2rad([8; -8; 8] / 3600);
 options.ukfEncoderNoiseScale = 0.2;
+options.ukfAccelerationNoiseStd = 0.02;
+options.ukfAngularVelocityNoiseStd = deg2rad(0.07);
+options.ukfInitialPositionStd = 5e-4;
+options.ukfInitialTranslationVelocityStd = 0.02;
 options.ukfWarmupDuration = 0.2;
 options.accelerationMode = "specificForce";
 options.poseVelocityFilterAlpha = 0;
@@ -47,13 +54,13 @@ options.forceEstimateFilterAlpha = 0;
 options.dynamicsForceObserverWeight = 0;
 options.accelerationFilterAlpha = 0.85;
 options.translationIterations = 4;
-options.translationGain = [8.0e4; 8.0e4; 2.4e5];
-options.rotationGain = [3.0e3; 3.0e3; 3.0e3];
-options.translationRateGain = [2.4e4; 2.4e4; 6.0e4];
-options.translationIntegralGain = [3.0e5; 3.0e5; 8.0e5];
+options.translationGain = [5.6e4; 5.6e4; 1.68e5];
+options.rotationGain = [2.25e3; 2.25e3; 2.25e3];
+options.translationRateGain = [7.2e3; 7.2e3; 1.8e4];
+options.translationIntegralGain = [7.5e4; 7.5e4; 2.0e5];
 options.translationIntegralLimit = [5e-3; 5e-3; 5e-3];
-options.rotationRateGain = [8.0e2; 8.0e2; 8.0e2];
-options.forceCorrectionLimit = 2000;
+options.rotationRateGain = [1.0e3; 1.0e3; 1.0e3];
+options.forceCorrectionLimit = 750;
 options.forceKpPwmPerNewton = 0.4;
 options.forceKiPwmPerNewtonSecond = 5.0;
 options.pwmRateLimit = 4000;
@@ -94,10 +101,12 @@ end
 function result = simulateLine(mode, reference, model, teacher, identified, options)
 sampleCount = numel(reference.t);
 controllerModel = teacher;
-if strcmp(mode, 'identified')
+controllerMode = mode;
+if ~strcmp(mode, 'oracle')
     controllerModel = identified;
+    controllerMode = 'identified';
 end
-controller = makePwmForceController(mode, controllerModel);
+controller = makePwmForceController(controllerMode, controllerModel);
 controller.kpPwmPerNewton = options.forceKpPwmPerNewton;
 controller.kiPwmPerNewtonSecond = options.forceKiPwmPerNewtonSecond;
 controller.pwmRateLimit = options.pwmRateLimit;
@@ -109,7 +118,7 @@ end
 controllerState = initializePwmForceControllerState(controller);
 plantState = initializeHighFidelityPwmActuatorState(teacher);
 estimatorState = [];
-if strcmp(mode, 'identified')
+if ~strcmp(mode, 'oracle')
     estimatorState = initializeGrayNarxForceEstimatorState(identified);
 end
 
@@ -124,7 +133,7 @@ previousFeedbackLegSpeed = initialLegSpeed;
     controllerState, plantState, reference.force(:, 1), initialLegSpeed, controller, teacher);
 previousFeedbackForce = initialForce;
 poseIntegral = zeros(3, 1);
-if strcmp(mode, 'identified')
+if ~strcmp(mode, 'oracle')
     for warmupIndex = 1:20
         [estimatorState, previousFeedbackForce] = stepGrayNarxForceEstimator( ...
             estimatorState, initialPwm, initialLegSpeed, identified);
@@ -142,8 +151,10 @@ if strcmp(mode, 'identified')
         ukfOverrides = struct( ...
             'encoderNoiseStd', options.ukfEncoderNoiseScale * options.encoderNoiseStd, ...
             'orientationNoiseStd', options.ukfOrientationNoiseStd, ...
-            'accelerationNoiseStd', options.accelerationNoiseStd, ...
-            'angularVelocityNoiseStd', options.angularVelocityNoiseStd);
+            'accelerationNoiseStd', options.ukfAccelerationNoiseStd, ...
+            'angularVelocityNoiseStd', options.ukfAngularVelocityNoiseStd, ...
+            'initialPositionStd', options.ukfInitialPositionStd, ...
+            'initialTranslationVelocityStd', options.ukfInitialTranslationVelocityStd);
         poseUkf = initializePoseImuUkf(makePoseImuUkfConfig( ...
             model, options.sampleTime, anchorPose, ukfOverrides));
         poseUkf = warmupPoseImuUkf(poseUkf, anchorPose, model, options);
@@ -163,6 +174,20 @@ for sampleIndex = 1:sampleCount
         feedbackForce = previousFeedbackForce;
         estimatedForce = previousFeedbackForce;
         feedbackLegSpeed = trueLegSpeed;
+    elseif strcmp(mode, 'identifiedTruthFeedback')
+        feedbackPose = qTrue;
+        feedbackVelocity = qdTrue;
+        feedbackLegSpeed = trueLegSpeed;
+        [estimatorState, rawEstimatedForce] = stepGrayNarxForceEstimator( ...
+            estimatorState, controllerState.previousPwm, feedbackLegSpeed, identified);
+        feedbackForce = options.forceEstimateFilterAlpha * previousFilteredForce + ...
+            (1 - options.forceEstimateFilterAlpha) * rawEstimatedForce;
+        dynamicsEstimatedForce = inverseDynamicsCompositeRigidBody( ...
+            feedbackPose, feedbackVelocity, previousTrueAcceleration, model);
+        feedbackForce = (1 - options.dynamicsForceObserverWeight) * feedbackForce + ...
+            options.dynamicsForceObserverWeight * dynamicsEstimatedForce;
+        previousFilteredForce = feedbackForce;
+        estimatedForce = feedbackForce;
     else
         encoderLength = sgpIK(qTrue, model).L - anchorLength;
         orientationMeasurement = qTrue(4:6);
@@ -189,6 +214,7 @@ for sampleIndex = 1:sampleCount
             angularVelocity = angularVelocity + gyroBias + ...
                 options.angularVelocityNoiseStd * randn(3, 1);
         end
+        orientationMeasurement = quantizeSignal(orientationMeasurement, options.orientationResolution);
         encoderLength = quantizeSignal(encoderLength, options.encoderResolution);
         encoderDifferencedSpeed = (encoderLength - previousEncoderLength) / options.sampleTime;
         previousEncoderLength = encoderLength;
@@ -257,7 +283,7 @@ for sampleIndex = 1:sampleCount
     result.targetForce(:, sampleIndex) = targetForce;
     result.trueForce(:, sampleIndex) = plantOutput.force;
     result.estimatedForce(:, sampleIndex) = estimatedForce;
-    if strcmp(mode, 'identified')
+    if ~strcmp(mode, 'oracle')
         result.rawEstimatedForce(:, sampleIndex) = rawEstimatedForce;
         result.dynamicsEstimatedForce(:, sampleIndex) = dynamicsEstimatedForce;
     else
@@ -308,25 +334,30 @@ result.dynamicsEstimatedForce = zeros(6, sampleCount);
 result.pwm = zeros(6, sampleCount);
 result.legSpeed = zeros(6, sampleCount);
 result.trueLegSpeed = zeros(6, sampleCount);
+isOracle = strcmp(mode, 'oracle');
+isTruthFeedback = strcmp(mode, 'identifiedTruthFeedback');
+isUkfFeedback = strcmp(mode, 'identified');
 result.observability = struct( ...
-    'usedTrueForceFeedback', strcmp(mode, 'oracle'), ...
-    'usedTruePoseFeedback', strcmp(mode, 'oracle'), ...
-    'usedEncoderImuFusion', strcmp(mode, 'identified'), ...
-    'usedUkfPoseFusion', strcmp(mode, 'identified') && strcmp(options.poseEstimatorMode, "ukf"), ...
-    'usedRelativeEncoder', strcmp(mode, 'identified'), ...
-    'usedImuAcceleration', strcmp(mode, 'identified') && strcmp(options.poseEstimatorMode, "ukf"), ...
-    'usedImuAngularVelocity', strcmp(mode, 'identified') && strcmp(options.poseEstimatorMode, "ukf"), ...
+    'usedTrueForceFeedback', isOracle, ...
+    'usedIdentifiedForceFeedback', ~isOracle, ...
+    'usedTruePoseFeedback', isOracle || isTruthFeedback, ...
+    'usedTrueVelocityFeedback', isOracle || isTruthFeedback, ...
+    'usedEncoderImuFusion', isUkfFeedback, ...
+    'usedUkfPoseFusion', isUkfFeedback && strcmp(options.poseEstimatorMode, "ukf"), ...
+    'usedRelativeEncoder', isUkfFeedback, ...
+    'usedImuAcceleration', isUkfFeedback && strcmp(options.poseEstimatorMode, "ukf"), ...
+    'usedImuAngularVelocity', isUkfFeedback && strcmp(options.poseEstimatorMode, "ukf"), ...
     'usedPositionMeasurement', false, ...
-    'usedHomeCalibration', strcmp(mode, 'identified') && options.homeCalibrationApplied, ...
-    'usedUkfWarmup', strcmp(mode, 'identified') && strcmp(options.poseEstimatorMode, "ukf") && ...
+    'usedHomeCalibration', isUkfFeedback && options.homeCalibrationApplied, ...
+    'usedUkfWarmup', isUkfFeedback && strcmp(options.poseEstimatorMode, "ukf") && ...
         options.ukfWarmupDuration > 0, ...
-    'usedEncoderDifferencedLegSpeed', strcmp(mode, 'identified') && ...
+    'usedEncoderDifferencedLegSpeed', isUkfFeedback && ...
         ~options.useFusedPoseLegSpeed, ...
-    'usedFusedPoseLegSpeed', strcmp(mode, 'identified') && options.useFusedPoseLegSpeed, ...
-    'usedDynamicsForceObserver', strcmp(mode, 'identified') && ...
+    'usedFusedPoseLegSpeed', isUkfFeedback && options.useFusedPoseLegSpeed, ...
+    'usedDynamicsForceObserver', ~isOracle && ...
         options.dynamicsForceObserverWeight > 0, ...
-    'usedTrueLegSpeedFeedback', strcmp(mode, 'oracle'), ...
-    'usedFeedbackPoseJacobian', strcmp(mode, 'identified'));
+    'usedTrueLegSpeedFeedback', isOracle || isTruthFeedback, ...
+    'usedFeedbackPoseJacobian', isUkfFeedback);
 end
 
 function estimator = warmupPoseImuUkf(estimator, anchorPose, model, options)
@@ -348,6 +379,7 @@ for sampleIndex = 1:sampleCount
         angularVelocity = angularVelocity + options.gyroCalibrationResidual + ...
             options.angularVelocityNoiseStd * randn(3, 1);
     end
+    orientation = quantizeSignal(orientation, options.orientationResolution);
     sample = struct('relativeLength', quantizeSignal(relativeLength, options.encoderResolution), ...
         'orientation', orientation, 'angularVelocity', angularVelocity, ...
         'accelerationMode', options.accelerationMode);
@@ -418,12 +450,18 @@ end
 function metrics = buildMetrics(comparison, teacher)
 forceSpan = 2 * max(teacher.forceLimit);
 identifiedError = comparison.identified.trueForce - comparison.identified.targetForce;
+truthFeedbackError = comparison.identifiedTruthFeedback.trueForce - ...
+    comparison.identifiedTruthFeedback.targetForce;
 oracleError = comparison.oracle.trueForce - comparison.oracle.targetForce;
 sameSampleEstimateError = comparison.identified.estimatedForce - comparison.identified.trueForce;
 alignedEstimateError = comparison.identified.estimatedForce(:, 2:end) - ...
     comparison.identified.trueForce(:, 1:end - 1);
+truthFeedbackAlignedEstimateError = comparison.identifiedTruthFeedback.estimatedForce(:, 2:end) - ...
+    comparison.identifiedTruthFeedback.trueForce(:, 1:end - 1);
 metrics = struct();
 metrics.identifiedForceTrackingNrmse = sqrt(mean(identifiedError.^2, 'all')) / forceSpan;
+metrics.identifiedTruthFeedbackForceTrackingNrmse = ...
+    sqrt(mean(truthFeedbackError.^2, 'all')) / forceSpan;
 metrics.oracleForceTrackingNrmse = sqrt(mean(oracleError.^2, 'all')) / forceSpan;
 metrics.identifiedForceEstimateAlignmentSamples = 1;
 metrics.identifiedSameSampleForceEstimateRms = sqrt(mean(sameSampleEstimateError.^2, 'all'));
@@ -431,8 +469,21 @@ metrics.identifiedAlignedForceEstimateRms = sqrt(mean(alignedEstimateError.^2, '
 metrics.identifiedAlignedForceEstimateNrmse = ...
     metrics.identifiedAlignedForceEstimateRms / forceSpan;
 metrics.identifiedAlignedForceEstimateBias = max(abs(mean(alignedEstimateError, 2)));
+metrics.identifiedTruthFeedbackAlignedForceEstimateRms = ...
+    sqrt(mean(truthFeedbackAlignedEstimateError.^2, 'all'));
+metrics.identifiedTruthFeedbackAlignedForceEstimateNrmse = ...
+    metrics.identifiedTruthFeedbackAlignedForceEstimateRms / forceSpan;
 metrics.identifiedPoseTranslationRms = sqrt(mean( ...
     (comparison.identified.qTrue(1:3, :) - comparison.identified.qReference(1:3, :)).^2, 'all'));
+metrics.identifiedTruthFeedbackPoseTranslationRms = sqrt(mean( ...
+    (comparison.identifiedTruthFeedback.qTrue(1:3, :) - ...
+    comparison.identifiedTruthFeedback.qReference(1:3, :)).^2, 'all'));
 metrics.oraclePoseTranslationRms = sqrt(mean( ...
     (comparison.oracle.qTrue(1:3, :) - comparison.oracle.qReference(1:3, :)).^2, 'all'));
+metrics.ukfTranslationRmsPenalty = metrics.identifiedPoseTranslationRms - ...
+    metrics.identifiedTruthFeedbackPoseTranslationRms;
+metrics.identificationTranslationRmsPenalty = ...
+    metrics.identifiedTruthFeedbackPoseTranslationRms - metrics.oraclePoseTranslationRms;
+metrics.totalDeployableTranslationRmsPenalty = ...
+    metrics.identifiedPoseTranslationRms - metrics.oraclePoseTranslationRms;
 end

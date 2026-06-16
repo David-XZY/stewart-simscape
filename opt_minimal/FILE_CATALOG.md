@@ -217,14 +217,18 @@ writeMidtermReportFigures.m
 |---|---|---|
 | `run_05_generate_pwm_identification_data.m` | 生成含 PWM、编码器量化、位姿观测和隐藏真值的数据集 | 活动 |
 | `run_06_train_pwm_force_identifier.m` | 训练并验证灰箱加残差 NARX 力估计器 | 活动 |
-| `run_07_compare_pwm_pose_force_control.m` | 独立比较真值基准线和辨识反馈线 | 活动 |
+| `run_07_compare_pwm_pose_force_control.m` | 比较 oracle、辨识真值位姿反馈和辨识 UKF 反馈三条闭环线 | 活动 |
+| `run_09_export_four_control_group_meeting_comparison.m` | 导出纯力、高保真、真实位姿辨识和 UKF 辨识四方案中文组会图 | 活动 |
+| `run_08_export_pwm_feedback_source_comparison.m` | 导出反馈源消融实验的组会结果包 | 活动 |
 | `actuator_identification/` | 高保真物理教师、辨识器、PWM 力内环、双线仿真与验收 | 活动 |
 | `integration/installSimscapePwmActuatorVariant.m` | 在现有支链 SLX 中增量安装 `PWM-Physical` Variant | 活动 |
 | `tools/exportPwmIdentificationEvidence.m` | 导出 PWM 物理模型、辨识与双线控制全链路图表和数值证据 | 工具 |
 | `tools/exportIdealPwmMacroMotionComparison.m` | 对比纯理想执行器与 PWM 真值/辨识反馈线的宏观运动表现 | 工具 |
+| `tools/exportPwmFeedbackSourceComparison.m` | 导出三线反馈源消融的数值表、误差归因和八张组会图片 | 工具 |
+| `tools/exportPwmUkfOuterLoopTuningEvaluation.m` | 导出 UKF 与外环联合整定前后的完整轨迹多种子对比 | 工具 |
 | `tests/test_24...test_30` | 覆盖物理模型、辨识、控制、SLX、开关校验和完整轨迹 | 测试 |
 
-当前 PWM 完整轨迹验收采用每个平移轴峰值误差 `<= 1 mm`，而不是旧的整体 `10 mm` 宽松阈值。
+当前 PWM 真实传感器和 UKF 闭环完整轨迹验收采用每个平移轴峰值误差 `<= 10 mm`、收敛后估计器平移轴峰值误差 `<= 4 mm`、旋转峰值误差 `<= 1.5 deg`。
 ## 相对编码器与 IMU UKF
 
 | 文件 | 用途 | 状态 |

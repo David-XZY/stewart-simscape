@@ -36,6 +36,9 @@ testFiles = {
     'test_34_pose_imu_ukf_recovery'
     'test_35_pose_imu_ukf_precision'
     'test_36_pose_imu_datasheet_parameters'
+    'test_37_pwm_feedback_source_export_contract'
+    'test_38_pwm_ukf_outer_loop_tuning_contract'
+    'test_39_four_control_group_meeting_export_contract'
 };
 
 for index = 1:numel(testFiles)

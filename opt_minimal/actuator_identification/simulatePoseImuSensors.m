@@ -10,7 +10,8 @@ options = struct();
 options.randomSeed = 41;
 options.encoderResolution = 1 / 16500;
 options.encoderNoiseStd = 1e-3;
-options.orientationNoiseStd = deg2rad(0.0055);
+options.orientationResolution = deg2rad(0.0055);
+options.orientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.orientationBias = deg2rad([0.1; -0.1; 0.5]);
 options.accelerationNoiseStd = 9.80665e-3;
 options.accelerometerBias = 9.80665 * [20; -20; 40] * 1e-3;
@@ -63,6 +64,7 @@ if options.homeCalibrationApplied
 end
 orientation = pose(4:6, :) + orientationBias + ...
     options.orientationNoiseStd .* randn(3, sampleCount);
+orientation = round(orientation / options.orientationResolution) * options.orientationResolution;
 worldAcceleration = translationAcceleration + accelerometerBias + ...
     options.accelerationNoiseStd * randn(3, sampleCount);
 specificForce = specificForce + accelerometerBias + ...

@@ -183,12 +183,13 @@ effectiveLengthError = rL + deltaLpose - dLm
 1. `makeHighFidelityPwmActuator` 构造高保真物理教师模型，包含平均值 H 桥、电气动态、反电动势、丝杠传动、摩擦死区、Stribeck 摩擦和饱和；真实力和电流仅用于训练标签与事后评价。
 2. `trainGrayNarxForceIdentifier` 使用可实际采集的 PWM、编码器腿速/加速度构造灰箱模型，并用残差 NARX 补偿未建模非线性。
 
-控制比较中，两条线从同一初态独立运行并驱动同一个高保真物理对象。基准线读取真实位姿和真实力；辨识线只读取编码器腿长、真实三轴姿态和估计力。运行顺序为：
+控制比较中，三条线从同一初态独立运行并驱动同一个高保真物理对象。基准线读取真实位姿和真实力；辨识真值位姿反馈线仍使用辨识力，仅将外环位姿和速度替换为平台真值；可部署辨识线使用相对编码器、IMU、UKF 和辨识力。运行顺序为：
 
 ```matlab
 run('opt_minimal/run_05_generate_pwm_identification_data.m')
 run('opt_minimal/run_06_train_pwm_force_identifier.m')
 run('opt_minimal/run_07_compare_pwm_pose_force_control.m')
+run('opt_minimal/run_08_export_pwm_feedback_source_comparison.m')
 ```
 
 `stewart_strut.slx` 中新增 `stewart.actuators.type==6` 的 `PWM-Physical` Variant，复用现有支链和关节结构，用于平均值 PWM 物理链的 Simscape 接入与模型更新检查。单轴开关级模型用于校验平均值模型，不作为完整平台主仿真。
@@ -197,7 +198,16 @@ run('opt_minimal/run_07_compare_pwm_pose_force_control.m')
 
 运行 `exportIdealPwmMacroMotionComparison` 可将 Run02 纯理想力执行器、PWM 物理对象加真值反馈、PWM 物理对象加辨识反馈统一到同一时间网格，对比宏观空间轨迹、位姿误差范数和逐自由度误差。
 
-PWM 控制与估计默认采用 `5 ms` 周期。辨识数据由平台可实现位姿轨迹经 IK/Jacobian 生成耦合腿速，并使用与部署一致的融合位姿腿速。PWM 双线控制采用平移 PID 型外环、低带宽力反馈与灰箱加残差 NARX 力估计；完整轨迹硬验收要求三个平移轴峰值误差分别不超过 `1 mm`。
+运行 `exportPwmFeedbackSourceComparison` 可导出 oracle、辨识真值位姿反馈和辨识 UKF 反馈三线消融实验，生成总体指标、分轴指标、误差归因、验收表、完整 MAT 数据和八张组会诊断图。
+
+运行 `run_09_export_four_control_group_meeting_comparison.m` 或
+`exportFourControlGroupMeetingComparison()` 可读取最新现有结果，导出纯力控制、高保真控制、
+真实位姿反馈辨识控制和 UKF 反馈辨识控制的全中文组会对比图。纯力控制是理想力源系统基线，
+与其余三条 PWM 控制线同级展示时仍需保留该公平性说明。
+
+PWM 控制与估计默认采用 `5 ms` 周期。辨识数据由平台可实现位姿轨迹经 IK/Jacobian 生成耦合腿速，并使用与部署一致的融合位姿腿速。PWM 三线控制采用平移 PID 型外环、低带宽力反馈与灰箱加残差 NARX 力估计；真实传感器和 UKF 闭环的完整轨迹硬验收要求三个平移轴峰值误差分别不超过 `10 mm`，收敛后估计器平移轴峰值误差不超过 `4 mm`，旋转峰值误差不超过 `1.5 deg`。
+
+当前相对编码器与 IMU UKF 已按真实传感器条件完成稳健联合整定：保持传感器噪声、偏置和回零残差不变，UKF 加速度过程噪声采用 `0.02 m/s^2`，平移位置/速度/积分增益采用原始比例 `0.70/0.30/0.25`，旋转位置/速度增益采用 `0.75/1.25`，单腿外环修正力限幅为 `750 N`。运行 `exportPwmUkfOuterLoopTuningEvaluation` 可导出整定前后五个随机种子的完整轨迹对比。
 ## 相对编码器与 IMU 位姿估计
 
 PWM 辨识反馈线不再读取运行时 `x/y/z` 或完整位姿测量。实验开始时，平台在六腿固定最短限位保持静止，
