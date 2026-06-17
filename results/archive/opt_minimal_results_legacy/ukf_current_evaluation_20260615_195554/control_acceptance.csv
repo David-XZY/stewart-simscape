@@ -1,0 +1,2 @@
+finitePassed,forceTrackingPassed,strictTranslationPassed,translationPassed,estimatorTranslationPassed,estimatorVelocityPassed,rotationPassed,pwmPassed,forceLimitPassed,truthIsolationPassed,truthFeedbackFinitePassed,truthFeedbackIsolationPassed,truthFeedbackExactPassed,truthFeedbackPwmPassed,truthFeedbackForceLimitPassed
+1,1,0,1,0,1,1,1,1,1,1,1,1,1,1

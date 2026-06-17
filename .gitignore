@@ -49,5 +49,10 @@ octave-workspace
 
 # opt_minimal 运行期产物与本地压缩包
 *.zip
-opt_minimal/results/*
-!opt_minimal/results/.gitkeep
+results/**
+!results/
+!results/README.md
+!results/**/
+!results/**/.gitkeep
+!results/archive/opt_minimal_results_legacy/**/*.md
+!results/archive/opt_minimal_results_legacy/**/*.csv

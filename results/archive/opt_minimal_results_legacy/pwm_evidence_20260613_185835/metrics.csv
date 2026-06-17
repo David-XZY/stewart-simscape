@@ -1,0 +1,13 @@
+names,values
+gray_test_nrmse,0.0063885718696767
+narx_test_nrmse,0.0025183231610249
+narx_test_bias,0.000176740652929939
+narx_improvement_percent,60.5808119185745
+switching_relative_mean_force_error,0.00119486700969615
+identified_force_tracking_nrmse,0.0110881610620368
+oracle_force_tracking_nrmse,0.0106835739115746
+online_force_estimate_nrmse,0.0108291104976196
+identified_translation_peak_m,0.003685662488214
+identified_rotation_peak_rad,0.00840972722223443
+pwm_utilization,0.734438089176448
+force_utilization,0.568305831208641

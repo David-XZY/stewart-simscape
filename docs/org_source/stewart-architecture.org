@@ -1,0 +1,2256 @@
+#+TITLE: Stewart Platform - Definition of the Architecture
+:DRAWER:
+#+STARTUP: overview
+
+#+LANGUAGE: en
+#+EMAIL: dehaeze.thomas@gmail.com
+#+AUTHOR: Dehaeze Thomas
+
+#+HTML_LINK_HOME: ./index.html
+#+HTML_LINK_UP: ./index.html
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="./css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="./css/readtheorg.css"/>
+#+HTML_HEAD: <script src="./js/jquery.min.js"></script>
+#+HTML_HEAD: <script src="./js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script src="./js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script src="./js/readtheorg.js"></script>
+
+#+PROPERTY: header-args:matlab  :session *MATLAB*
+#+PROPERTY: header-args:matlab+ :comments org
+#+PROPERTY: header-args:matlab+ :exports both
+#+PROPERTY: header-args:matlab+ :results none
+#+PROPERTY: header-args:matlab+ :eval no-export
+#+PROPERTY: header-args:matlab+ :noweb yes
+#+PROPERTY: header-args:matlab+ :mkdirp yes
+#+PROPERTY: header-args:matlab+ :output-dir figs
+
+#+PROPERTY: header-args:latex  :headers '("\\usepackage{tikz}" "\\usepackage{import}" "\\import{$HOME/Cloud/tikz/org/}{config.tex}")
+#+PROPERTY: header-args:latex+ :imagemagick t :fit yes
+#+PROPERTY: header-args:latex+ :iminoptions -scale 100% -density 150
+#+PROPERTY: header-args:latex+ :imoutoptions -quality 100
+#+PROPERTY: header-args:latex+ :results file raw replace
+#+PROPERTY: header-args:latex+ :buffer no
+#+PROPERTY: header-args:latex+ :eval no-export
+#+PROPERTY: header-args:latex+ :exports results
+#+PROPERTY: header-args:latex+ :mkdirp yes
+#+PROPERTY: header-args:latex+ :output-dir figs
+#+PROPERTY: header-args:latex+ :post pdf2svg(file=*this*, ext="png")
+:END:
+
+* Introduction                                                          :ignore:
+In this document is explained how the Stewart Platform architecture is defined.
+
+Some efforts has been made such that the procedure for the definition of the Stewart Platform architecture is as logical and clear as possible.
+
+When possible, the notations are compatible with the one used in cite:taghirad13_paral.
+
+The definition of the Stewart platform is done in three main parts:
+- First, the geometry if defined (Section [[sec:definition_geometry]])
+- Then, the inertia of the mechanical elements are defined (Section [[sec:definition_inertia]])
+- Finally, the Stiffness and Damping characteristics of the elements are defined (Section [[sec:definition_dynamics]])
+
+In section [[sec:summary_initialization]], the procedure the initialize the Stewart platform is summarize and the associated Matlab code is shown.
+
+Finally, all the Matlab function used to initialize the Stewart platform are described in section [[sec:functions]].
+
+* Definition of the Stewart Platform Geometry
+<<sec:definition_geometry>>
+** Introduction                                                      :ignore:
+Stewart platforms are generated in multiple steps:
+- Definition of the frames
+- Definition of the location of the joints
+- Computation of the length and orientation of the struts
+- Choice of the rest position of the mobile platform
+
+This steps are detailed below.
+
+** Frames Definition
+We define 4 important *frames* (see Figure [[fig:frame_definition]]):
+- $\{F\}$: Frame fixed to the *Fixed* base and located at the center of its bottom surface.
+  This is used to fix the Stewart platform to some support.
+- $\{M\}$: Frame fixed to the *Moving* platform and located at the center of its top surface.
+  This is used to place things on top of the Stewart platform.
+- $\{A\}$: Frame fixed to the fixed base.
+- $\{B\}$: Frame fixed to the moving platform.
+
+Even though frames $\{A\}$ and $\{B\}$ don't usually correspond to physical elements, they are of primary importance.
+Firstly, they are used for the definition of the motion of the Mobile platform with respect to the fixed frame:
+- In position: ${}^A\bm{P}_{B}$ (read: Position of frame $\{B\}$ expressed in frame $\{A\}$)
+- In rotation: ${}^A\bm{R}_{B}$ (read: The rotation matrix that express the orientation of frame $\{B\}$ expressed in frame $\{A\}$)
+The frames $\{A\}$ and $\{B\}$ are used for all the kinematic analysis (Jacobian, Stiffness matrix, ...).
+
+Typical choice of $\{A\}$ and $\{B\}$ are:
+- Center of mass of the payload
+- Location where external forces are applied to the mobile platform (for instance when the mobile platform is in contact with a stiff environment)
+- Center of the cube for the cubic configuration
+
+The definition of the frames is done with the =initializeFramesPositions= function ([[sec:initializeFramesPositions][link]]);
+
+#+name: fig:frame_definition
+#+caption: Definition of the Frames for the Stewart Platform
+#+attr_html: :width 500px
+[[file:figs/frame_definition.png]]
+
+** Location of the Spherical Joints
+Then, we define the *location of the spherical joints* (see Figure [[fig:joint_location]]):
+- $\bm{a}_{i}$ are the position of the spherical joints fixed to the fixed base
+- $\bm{b}_{i}$ are the position of the spherical joints fixed to the moving platform
+
+The location of the joints will define the Geometry of the Stewart platform.
+Many characteristics of the platform depend on the location of the joints.
+
+The location of the joints can be set to arbitrary positions or it can be computed to obtain specific configurations such as:
+- A cubic configuration: function =generateCubicConfiguration= (described in [[file:cubic-configuration.org][this]] file)
+- A symmetrical configuration
+
+A function (=generateGeneralConfiguration=) to set the position of the joints on a circle is described [[sec:generateGeneralConfiguration][here]].
+
+The location of the spherical joints are then given by ${}^{F}\bm{a}_{i}$ and ${}^{M}\bm{b}_{i}$.
+
+#+name: fig:joint_location
+#+caption: Position of the Spherical/Universal joints for the Stewart Platform
+#+attr_html: :width 500px
+[[file:figs/joint_location.png]]
+
+** Length and orientation of the struts
+From the location of the joints (${}^{F}\bm{a}_{i}$ and ${}^{M}\bm{b}_{i}$), we compute the length $l_i$ and orientation of each strut $\hat{\bm{s}}_i$ (unit vector aligned with the strut).
+The length and orientation of each strut is represented in figure [[fig:length_orientation_struts]].
+
+This is done with the =computeJointsPose= function ([[sec:computeJointsPose][link]]).
+
+#+name: fig:length_orientation_struts
+#+caption: Length $l_i$ and orientation $\hat{\bm{s}}_i$ of the Stewart platform struts
+#+attr_html: :width 500px
+[[file:figs/length_orientation_struts.png]]
+
+** Rest Position of the Stewart platform
+We may want to initialize the Stewart platform in some position and orientation that corresponds to its rest position.
+
+To do so, we choose:
+- the position of $\bm{O}_B$ expressed in $\{A\}$ using ${}^A\bm{P}$
+- the orientation of $\{B\}$ expressed in $\{A\}$ using a rotation matrix ${}^{A}\bm{R}_{B}$
+
+Then, the function =initializeStewartPose= ([[sec:initializeStewartPose][link]]) compute the corresponding initial and rest position of each of the strut.
+
+* Definition of the Inertia and geometry of the Fixed base, Mobile platform and Struts
+<<sec:definition_inertia>>
+** Introduction                                                      :ignore:
+Now that the geometry of the Stewart platform has been defined, we have to choose the inertia of:
+- The Fixed base
+- The Mobile platform
+- The two parts of the struts
+
+The inertia of these elements will modify the dynamics of the systems.
+It is thus important to set them properly.
+
+** Inertia and Geometry of the Fixed and Mobile platforms
+In order to set the inertia of the fixed and mobile platforms, we can use the following function that assume that both platforms are cylindrical:
+- =initializeCylindricalPlatforms= ([[sec:initializeCylindricalPlatforms][link]]): by choosing the height, radius and mass of the platforms, it computes the inertia matrix that will be used for simulation
+
+** Inertia and Geometry of the struts
+Similarly for the struts, we suppose here that they have a cylindrical shape.
+They are initialize with the following function:
+- =initializeCylindricalStruts= ([[sec:initializeCylindricalStruts][link]]): the two parts of each strut are supposed to by cylindrical. We can set the mass and geometry of both strut parts.
+
+* Definition of the stiffness and damping of the joints
+<<sec:definition_dynamics>>
+
+** Introduction                                                      :ignore:
+The global stiffness and damping of the Stewart platform depends on its geometry but also on the stiffness and damping of:
+- the actuator because of the finite stiffness of the actuator / linear guide
+- the spherical joints
+
+** Stiffness and Damping of the Actuator
+Each Actuator is modeled by 3 elements in parallel (Figure [[fig:stewart_platform_actuator]]):
+- A spring with a stiffness $k_{i}$
+- A dashpot with a damping $c_{i}$
+- An ideal force actuator generating a force $\tau_i$
+
+#+name: fig:stewart_platform_actuator
+#+caption: Model of the Stewart platform actuator
+[[file:figs/stewart_platform_actuator.png]]
+
+The initialization of the stiffness and damping properties of the actuators is done with the =initializeStrutDynamics= ([[sec:initializeStrutDynamics][link]]).
+
+** Stiffness and Damping of the Spherical Joints
+Even though we often suppose that the spherical joint are perfect in the sense that we neglect its stiffness and damping, we can set some rotation stiffness and damping of each of the spherical/universal joints.
+
+This is done with the =initializeJointDynamics= function ([[sec:initializeJointDynamics][link]]).
+
+* Summary of the Initialization Procedure and Matlab Example
+<<sec:summary_initialization>>
+** Introduction                                                      :ignore:
+The procedure to define the Stewart platform is the following:
+1. Define the initial position of frames $\{A\}$, $\{B\}$, $\{F\}$ and $\{M\}$.
+   We do that using the =initializeFramesPositions= function.
+   We have to specify the total height of the Stewart platform $H$ and the position ${}^{M}\bm{O}_{B}$ of $\{B\}$ with respect to $\{M\}$.
+2. Compute the positions of joints ${}^{F}\bm{a}_{i}$ and ${}^{M}\bm{b}_{i}$.
+   We can do that using various methods depending on the wanted architecture:
+   - =generateCubicConfiguration= permits to generate a cubic configuration
+3. Compute the position and orientation of the joints with respect to the fixed base and the moving platform.
+   This is done with the =computeJointsPose= function.
+   If wanted, compute the rest position of each strut to have the wanted pose of the mobile platform with the function =initializeStewartPose=.
+4. Define the mass and inertia of each element of the Stewart platform with the =initializeCylindricalPlatforms= and =initializeCylindricalStruts=
+5. Define the dynamical properties of the Stewart platform by setting the stiffness and damping of the actuators and joints.
+
+By following this procedure, we obtain a Matlab structure =stewart= that contains all the information for the Simscape model and for further analysis.
+
+** Matlab Init                                              :noexport:ignore:
+#+begin_src matlab :tangle no :exports none :results silent :noweb yes :var current_dir=(file-name-directory buffer-file-name)
+  <<matlab-dir>>
+#+end_src
+
+#+begin_src matlab :exports none :results silent :noweb yes
+  <<matlab-init>>
+#+end_src
+
+#+begin_src matlab
+  simulinkproject('../');
+#+end_src
+
+** Example of the initialization of a Stewart Platform
+Let's first define the Stewart Platform Geometry.
+#+begin_src matlab
+  stewart = initializeStewartPlatform();
+  stewart = initializeFramesPositions(stewart, 'H', 90e-3, 'MO_B', 45e-3);
+  stewart = generateGeneralConfiguration(stewart);
+  stewart = computeJointsPose(stewart);
+  stewart = initializeStewartPose(stewart, 'AP', [0;0;0], 'ARB', eye(3));
+#+end_src
+
+Then, define the inertia and geometry of the fixed base, mobile platform and struts.
+#+begin_src matlab
+  stewart = initializeCylindricalPlatforms(stewart);
+  stewart = initializeCylindricalStruts(stewart);
+#+end_src
+
+We initialize the strut stiffness and damping properties.
+#+begin_src matlab
+  stewart = initializeStrutDynamics(stewart, 'K', 1e6*ones(6,1), 'C', 1e2*ones(6,1));
+  stewart = initializeAmplifiedStrutDynamics(stewart);
+  stewart = initializeJointDynamics(stewart);
+#+end_src
+
+And finally the inertial sensors included in each strut.
+#+begin_src matlab
+  stewart = initializeInertialSensor(stewart, 'type', 'none');
+#+end_src
+
+The obtained =stewart= Matlab structure contains all the information for analysis of the Stewart platform and for simulations using Simscape.
+
+The function =displayArchitecture= can be used to display the current Stewart configuration:
+#+begin_src matlab
+  displayArchitecture(stewart, 'views', 'all');
+#+end_src
+
+#+header: :tangle no :exports results :results none :noweb yes
+#+begin_src matlab :var filepath="figs/stewart_architecture_example.pdf" :var figsize="wide-tall" :post pdf2svg(file=*this*, ext="png")
+<<plt-matlab>>
+#+end_src
+
+#+name: fig:stewart_architecture_example
+#+caption: Display of the current Stewart platform architecture ([[./figs/stewart_architecture_example.png][png]], [[./figs/stewart_architecture_example.pdf][pdf]])
+[[file:figs/stewart_architecture_example.png]]
+
+There are many options to show or hides elements such as labels and frames.
+The documentation of the function is available [[sec:displayArchitecture][here]].
+
+Let's now move a little bit the top platform and re-display the configuration:
+#+begin_src matlab
+  tx = 0.1; % [rad]
+  ty = 0.2; % [rad]
+  tz = 0.05; % [rad]
+
+  Rx = [1 0        0;
+        0 cos(tx) -sin(tx);
+        0 sin(tx)  cos(tx)];
+
+  Ry = [ cos(ty) 0 sin(ty);
+        0        1 0;
+        -sin(ty) 0 cos(ty)];
+
+  Rz = [cos(tz) -sin(tz) 0;
+        sin(tz)  cos(tz) 0;
+        0        0       1];
+
+  ARB = Rz*Ry*Rx;
+  AP = [0.08; 0; 0]; % [m]
+
+  displayArchitecture(stewart, 'AP', AP, 'ARB', ARB);
+  view([0 -1 0]);
+#+end_src
+
+#+header: :tangle no :exports results :results none :noweb yes
+#+begin_src matlab :var filepath="figs/stewart_architecture_example_pose.pdf" :var figsize="wide-tall" :post pdf2svg(file=*this*, ext="png")
+<<plt-matlab>>
+#+end_src
+
+#+name: fig:stewart_architecture_example_pose
+#+caption: Display of the Stewart platform architecture at some defined pose ([[./figs/stewart_architecture_example_pose.png][png]], [[./figs/stewart_architecture_example_pose.pdf][pdf]])
+[[file:figs/stewart_architecture_example_pose.png]]
+
+One can also use the =describeStewartPlatform= function to have a description of the current Stewart platform's state.
+
+#+begin_src matlab :results output replace :exports results
+  describeStewartPlatform(stewart)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+describeStewartPlatform(stewart)
+GEOMETRY:
+- The height between the fixed based and the top platform is 90 [mm].
+- Frame {A} is located 45 [mm] above the top platform.
+- The initial length of the struts are:
+	 95.2, 95.2, 95.2, 95.2, 95.2, 95.2 [mm]
+
+ACTUATORS:
+- The actuators are mechanicaly amplified.
+- The vertical stiffness and damping contribution of the piezoelectric stack is:
+	 ka = 2e+07 [N/m] 	 ca = 1e+01 [N/(m/s)]
+- Vertical stiffness when the piezoelectric stack is removed is:
+	 kr = 5e+06 [N/m] 	 cr = 1e+01 [N/(m/s)]
+
+JOINTS:
+- The joints on the fixed based are universal joints
+- The joints on the mobile based are spherical joints
+- The position of the joints on the fixed based with respect to {F} are (in [mm]):
+	  113 	 -20 	  15
+	  113 	  20 	  15
+	 -39.3 	  108 	  15
+	 -73.9 	  88.1 	  15
+	 -73.9 	 -88.1 	  15
+	 -39.3 	 -108 	  15
+- The position of the joints on the mobile based with respect to {M} are (in [mm]):
+	  57.9 	 -68.9 	 -15
+	  57.9 	  68.9 	 -15
+	  30.8 	  84.6 	 -15
+	 -88.6 	  15.6 	 -15
+	 -88.6 	 -15.6 	 -15
+	  30.8 	 -84.6 	 -15
+
+KINEMATICS:
+'org_babel_eoe'
+ans =
+    'org_babel_eoe'
+#+end_example
+
+* Functions
+<<sec:functions>>
+
+** =initializeStewartPlatform=: Initialize the Stewart Platform structure
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeStewartPlatform.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeStewartPlatform>>
+
+This Matlab function is accessible [[file:../../src/initializeStewartPlatform.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+name: fig:stewart-frames-position
+#+caption: Definition of the position of the frames
+[[file:figs/stewart-frames-position.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeStewartPlatform()
+  % initializeStewartPlatform - Initialize the stewart structure
+  %
+  % Syntax: [stewart] = initializeStewartPlatform(args)
+  %
+  % Outputs:
+  %    - stewart - A structure with the following sub-structures:
+  %      - platform_F -
+  %      - platform_M -
+  %      - joints_F   -
+  %      - joints_M   -
+  %      - struts_F   -
+  %      - struts_M   -
+  %      - actuators  -
+  %      - geometry   -
+  %      - properties -
+#+end_src
+
+*** Initialize the Stewart structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart = struct();
+  stewart.platform_F = struct();
+  stewart.platform_M = struct();
+  stewart.joints_F   = struct();
+  stewart.joints_M   = struct();
+  stewart.struts_F   = struct();
+  stewart.struts_M   = struct();
+  stewart.actuators  = struct();
+  stewart.sensors    = struct();
+  stewart.sensors.inertial = struct();
+  stewart.sensors.force    = struct();
+  stewart.sensors.relative = struct();
+  stewart.geometry   = struct();
+  stewart.kinematics = struct();
+#+end_src
+
+** =initializeFramesPositions=: Initialize the positions of frames {A}, {B}, {F} and {M}
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeFramesPositions.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeFramesPositions>>
+
+This Matlab function is accessible [[file:../../src/initializeFramesPositions.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+name: fig:stewart-frames-position
+#+caption: Definition of the position of the frames
+[[file:figs/stewart-frames-position.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeFramesPositions(stewart, args)
+  % initializeFramesPositions - Initialize the positions of frames {A}, {B}, {F} and {M}
+  %
+  % Syntax: [stewart] = initializeFramesPositions(stewart, args)
+  %
+  % Inputs:
+  %    - args - Can have the following fields:
+  %        - H    [1x1] - Total Height of the Stewart Platform (height from {F} to {M}) [m]
+  %        - MO_B [1x1] - Height of the frame {B} with respect to {M} [m]
+  %
+  % Outputs:
+  %    - stewart - A structure with the following fields:
+  %        - geometry.H      [1x1] - Total Height of the Stewart Platform [m]
+  %        - geometry.FO_M   [3x1] - Position of {M} with respect to {F} [m]
+  %        - platform_M.MO_B [3x1] - Position of {B} with respect to {M} [m]
+  %        - platform_F.FO_A [3x1] - Position of {A} with respect to {F} [m]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.H    (1,1) double {mustBeNumeric, mustBePositive} = 90e-3
+      args.MO_B (1,1) double {mustBeNumeric} = 50e-3
+  end
+#+end_src
+
+*** Compute the position of each frame
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  H = args.H; % Total Height of the Stewart Platform [m]
+
+  FO_M = [0; 0; H]; % Position of {M} with respect to {F} [m]
+
+  MO_B = [0; 0; args.MO_B]; % Position of {B} with respect to {M} [m]
+
+  FO_A = MO_B + FO_M; % Position of {A} with respect to {F} [m]
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.geometry.H      = H;
+  stewart.geometry.FO_M   = FO_M;
+  stewart.platform_M.MO_B = MO_B;
+  stewart.platform_F.FO_A = FO_A;
+#+end_src
+
+** =generateGeneralConfiguration=: Generate a Very General Configuration
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/generateGeneralConfiguration.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:generateGeneralConfiguration>>
+
+This Matlab function is accessible [[file:../../src/generateGeneralConfiguration.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Joints are positions on a circle centered with the Z axis of {F} and {M} and at a chosen distance from {F} and {M}.
+The radius of the circles can be chosen as well as the angles where the joints are located (see Figure [[fig:joint_position_general]]).
+
+#+begin_src latex :file stewart_bottom_plate.pdf
+  \begin{tikzpicture}
+    % Internal and external limit
+    \draw[fill=white!80!black] (0, 0) circle [radius=3];
+    % Circle where the joints are located
+    \draw[dashed] (0, 0) circle [radius=2.5];
+
+    % Bullets for the positions of the joints
+    \node[] (J1) at ( 80:2.5){$\bullet$};
+    \node[] (J2) at (100:2.5){$\bullet$};
+    \node[] (J3) at (200:2.5){$\bullet$};
+    \node[] (J4) at (220:2.5){$\bullet$};
+    \node[] (J5) at (320:2.5){$\bullet$};
+    \node[] (J6) at (340:2.5){$\bullet$};
+
+    % Name of the points
+    \node[above right] at (J1) {$a_{1}$};
+    \node[above left]  at (J2) {$a_{2}$};
+    \node[above left]  at (J3) {$a_{3}$};
+    \node[right     ]  at (J4) {$a_{4}$};
+    \node[left      ]  at (J5) {$a_{5}$};
+    \node[above right] at (J6) {$a_{6}$};
+
+    % First 2 angles
+    \draw[dashed, ->] (0:1)   arc [start angle=0, end angle=80, radius=1]    node[below right]{$\theta_{1}$};
+    \draw[dashed, ->] (0:1.5) arc [start angle=0, end angle=100, radius=1.5] node[left       ]{$\theta_{2}$};
+
+    % Division of 360 degrees by 3
+    \draw[dashed] (0, 0) -- ( 80:3.2);
+    \draw[dashed] (0, 0) -- (100:3.2);
+    \draw[dashed] (0, 0) -- (200:3.2);
+    \draw[dashed] (0, 0) -- (220:3.2);
+    \draw[dashed] (0, 0) -- (320:3.2);
+    \draw[dashed] (0, 0) -- (340:3.2);
+
+    % Radius for the position of the joints
+    \draw[<->] (0, 0) --node[near end, above]{$R$} (180:2.5);
+
+    \draw[->] (0, 0) -- ++(3.4, 0) node[above]{$x$};
+    \draw[->] (0, 0) -- ++(0, 3.4) node[left]{$y$};
+  \end{tikzpicture}
+#+end_src
+
+#+name: fig:joint_position_general
+#+caption: Position of the joints
+#+RESULTS:
+[[file:figs/stewart_bottom_plate.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = generateGeneralConfiguration(stewart, args)
+  % generateGeneralConfiguration - Generate a Very General Configuration
+  %
+  % Syntax: [stewart] = generateGeneralConfiguration(stewart, args)
+  %
+  % Inputs:
+  %    - args - Can have the following fields:
+  %        - FH  [1x1] - Height of the position of the fixed joints with respect to the frame {F} [m]
+  %        - FR  [1x1] - Radius of the position of the fixed joints in the X-Y [m]
+  %        - FTh [6x1] - Angles of the fixed joints in the X-Y plane with respect to the X axis [rad]
+  %        - MH  [1x1] - Height of the position of the mobile joints with respect to the frame {M} [m]
+  %        - FR  [1x1] - Radius of the position of the mobile joints in the X-Y [m]
+  %        - MTh [6x1] - Angles of the mobile joints in the X-Y plane with respect to the X axis [rad]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %        - platform_F.Fa  [3x6] - Its i'th column is the position vector of joint ai with respect to {F}
+  %        - platform_M.Mb  [3x6] - Its i'th column is the position vector of joint bi with respect to {M}
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.FH  (1,1) double {mustBeNumeric, mustBePositive} = 15e-3
+      args.FR  (1,1) double {mustBeNumeric, mustBePositive} = 115e-3;
+      args.FTh (6,1) double {mustBeNumeric} = [-10, 10, 120-10, 120+10, 240-10, 240+10]*(pi/180);
+      args.MH  (1,1) double {mustBeNumeric, mustBePositive} = 15e-3
+      args.MR  (1,1) double {mustBeNumeric, mustBePositive} = 90e-3;
+      args.MTh (6,1) double {mustBeNumeric} = [-60+10, 60-10, 60+10, 180-10, 180+10, -60-10]*(pi/180);
+  end
+#+end_src
+
+*** Compute the pose
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  Fa = zeros(3,6);
+  Mb = zeros(3,6);
+#+end_src
+
+#+begin_src matlab
+  for i = 1:6
+    Fa(:,i) = [args.FR*cos(args.FTh(i)); args.FR*sin(args.FTh(i));  args.FH];
+    Mb(:,i) = [args.MR*cos(args.MTh(i)); args.MR*sin(args.MTh(i)); -args.MH];
+  end
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.platform_F.Fa = Fa;
+  stewart.platform_M.Mb = Mb;
+#+end_src
+
+** =computeJointsPose=: Compute the Pose of the Joints
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/computeJointsPose.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:computeJointsPose>>
+
+This Matlab function is accessible [[file:../../src/computeJointsPose.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+name: fig:stewart-struts
+#+caption: Position and orientation of the struts
+[[file:figs/stewart-struts.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = computeJointsPose(stewart, args)
+  % computeJointsPose -
+  %
+  % Syntax: [stewart] = computeJointsPose(stewart, args)
+  %
+  % Inputs:
+  %    - stewart - A structure with the following fields
+  %        - platform_F.Fa   [3x6] - Its i'th column is the position vector of joint ai with respect to {F}
+  %        - platform_M.Mb   [3x6] - Its i'th column is the position vector of joint bi with respect to {M}
+  %        - platform_F.FO_A [3x1] - Position of {A} with respect to {F}
+  %        - platform_M.MO_B [3x1] - Position of {B} with respect to {M}
+  %        - geometry.FO_M   [3x1] - Position of {M} with respect to {F}
+  %    - args - Can have the following fields:
+  %        - AP   [3x1] - The wanted position of {B} with respect to {A}
+  %        - ARB  [3x3] - The rotation matrix that gives the wanted orientation of {B} with respect to {A}
+  %
+  % Outputs:
+  %    - stewart - A structure with the following added fields
+  %        - geometry.Aa    [3x6]   - The i'th column is the position of ai with respect to {A}
+  %        - geometry.Ab    [3x6]   - The i'th column is the position of bi with respect to {A}
+  %        - geometry.Ba    [3x6]   - The i'th column is the position of ai with respect to {B}
+  %        - geometry.Bb    [3x6]   - The i'th column is the position of bi with respect to {B}
+  %        - geometry.l     [6x1]   - The i'th element is the initial length of strut i
+  %        - geometry.As    [3x6]   - The i'th column is the unit vector of strut i expressed in {A}
+  %        - geometry.Bs    [3x6]   - The i'th column is the unit vector of strut i expressed in {B}
+  %        - struts_F.l     [6x1]   - Length of the Fixed part of the i'th strut
+  %        - struts_M.l     [6x1]   - Length of the Mobile part of the i'th strut
+  %        - platform_F.FRa [3x3x6] - The i'th 3x3 array is the rotation matrix to orientate the bottom of the i'th strut from {F}
+  %        - platform_M.MRb [3x3x6] - The i'th 3x3 array is the rotation matrix to orientate the top of the i'th strut from {M}
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.AP  (3,1) double {mustBeNumeric} = zeros(3,1)
+      args.ARB (3,3) double {mustBeNumeric} = eye(3)
+  end
+#+end_src
+
+*** Check the =stewart= structure elements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  assert(isfield(stewart.platform_F, 'Fa'),   'stewart.platform_F should have attribute Fa')
+  Fa = stewart.platform_F.Fa;
+
+  assert(isfield(stewart.platform_M, 'Mb'),   'stewart.platform_M should have attribute Mb')
+  Mb = stewart.platform_M.Mb;
+
+  assert(isfield(stewart.platform_F, 'FO_A'), 'stewart.platform_F should have attribute FO_A')
+  FO_A = stewart.platform_F.FO_A;
+
+  assert(isfield(stewart.platform_M, 'MO_B'), 'stewart.platform_M should have attribute MO_B')
+  MO_B = stewart.platform_M.MO_B;
+
+  assert(isfield(stewart.geometry,   'FO_M'), 'stewart.geometry should have attribute FO_M')
+  FO_M = stewart.geometry.FO_M;
+#+end_src
+
+*** Compute the position of the Joints
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  Aa = Fa - repmat(FO_A, [1, 6]);
+  Bb = Mb - repmat(MO_B, [1, 6]);
+#+end_src
+
+Original:
+#+begin_src matlab
+  Ab = Bb - repmat(-MO_B-FO_M+FO_A, [1, 6]);
+  Ba = Aa - repmat( MO_B+FO_M-FO_A, [1, 6]);
+#+end_src
+
+Translation & Rotation: (Rotation and then translation)
+#+begin_src matlab
+  Ab = args.ARB *Bb - repmat(-args.AP, [1, 6]);
+  Ba = args.ARB'*Aa - repmat( args.AP, [1, 6]);
+#+end_src
+
+*** Compute the strut length and orientation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  As = (Ab - Aa)./vecnorm(Ab - Aa); % As_i is the i'th vector of As
+
+  l = vecnorm(Ab - Aa)';
+#+end_src
+
+#+begin_src matlab
+  Bs = (Bb - Ba)./vecnorm(Bb - Ba);
+#+end_src
+
+*** Compute the orientation of the Joints
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  FRa = zeros(3,3,6);
+  MRb = zeros(3,3,6);
+
+  for i = 1:6
+    FRa(:,:,i) = [cross([0;1;0], As(:,i)) , cross(As(:,i), cross([0;1;0], As(:,i))) , As(:,i)];
+    FRa(:,:,i) = FRa(:,:,i)./vecnorm(FRa(:,:,i));
+
+    MRb(:,:,i) = [cross([0;1;0], Bs(:,i)) , cross(Bs(:,i), cross([0;1;0], Bs(:,i))) , Bs(:,i)];
+    MRb(:,:,i) = MRb(:,:,i)./vecnorm(MRb(:,:,i));
+  end
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.geometry.Aa = Aa;
+  stewart.geometry.Ab = Ab;
+  stewart.geometry.Ba = Ba;
+  stewart.geometry.Bb = Bb;
+  stewart.geometry.As = As;
+  stewart.geometry.Bs = Bs;
+  stewart.geometry.l  = l;
+
+  stewart.struts_F.l  = l/2;
+  stewart.struts_M.l  = l/2;
+
+  stewart.platform_F.FRa = FRa;
+  stewart.platform_M.MRb = MRb;
+#+end_src
+
+** =initializeStewartPose=: Determine the initial stroke in each leg to have the wanted pose
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeStewartPose.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeStewartPose>>
+
+This Matlab function is accessible [[file:../../src/initializeStewartPose.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeStewartPose(stewart, args)
+  % initializeStewartPose - Determine the initial stroke in each leg to have the wanted pose
+  %                         It uses the inverse kinematic
+  %
+  % Syntax: [stewart] = initializeStewartPose(stewart, args)
+  %
+  % Inputs:
+  %    - stewart - A structure with the following fields
+  %        - Aa   [3x6] - The positions ai expressed in {A}
+  %        - Bb   [3x6] - The positions bi expressed in {B}
+  %    - args - Can have the following fields:
+  %        - AP   [3x1] - The wanted position of {B} with respect to {A}
+  %        - ARB  [3x3] - The rotation matrix that gives the wanted orientation of {B} with respect to {A}
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - actuators.Leq [6x1] - The 6 needed displacement of the struts from the initial position in [m] to have the wanted pose of {B} w.r.t. {A}
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.AP  (3,1) double {mustBeNumeric} = zeros(3,1)
+      args.ARB (3,3) double {mustBeNumeric} = eye(3)
+  end
+#+end_src
+
+*** Use the Inverse Kinematic function
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  [Li, dLi] = inverseKinematics(stewart, 'AP', args.AP, 'ARB', args.ARB);
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.actuators.Leq = dLi;
+#+end_src
+
+** =initializeCylindricalPlatforms=: Initialize the geometry of the Fixed and Mobile Platforms
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeCylindricalPlatforms.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeCylindricalPlatforms>>
+
+This Matlab function is accessible [[file:../../src/initializeCylindricalPlatforms.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeCylindricalPlatforms(stewart, args)
+  % initializeCylindricalPlatforms - Initialize the geometry of the Fixed and Mobile Platforms
+  %
+  % Syntax: [stewart] = initializeCylindricalPlatforms(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - Fpm [1x1] - Fixed Platform Mass [kg]
+  %        - Fph [1x1] - Fixed Platform Height [m]
+  %        - Fpr [1x1] - Fixed Platform Radius [m]
+  %        - Mpm [1x1] - Mobile Platform Mass [kg]
+  %        - Mph [1x1] - Mobile Platform Height [m]
+  %        - Mpr [1x1] - Mobile Platform Radius [m]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - platform_F [struct] - structure with the following fields:
+  %        - type = 1
+  %        - M [1x1] - Fixed Platform Mass [kg]
+  %        - I [3x3] - Fixed Platform Inertia matrix [kg*m^2]
+  %        - H [1x1] - Fixed Platform Height [m]
+  %        - R [1x1] - Fixed Platform Radius [m]
+  %      - platform_M [struct] - structure with the following fields:
+  %        - M [1x1] - Mobile Platform Mass [kg]
+  %        - I [3x3] - Mobile Platform Inertia matrix [kg*m^2]
+  %        - H [1x1] - Mobile Platform Height [m]
+  %        - R [1x1] - Mobile Platform Radius [m]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.Fpm (1,1) double {mustBeNumeric, mustBePositive} = 1
+      args.Fph (1,1) double {mustBeNumeric, mustBePositive} = 10e-3
+      args.Fpr (1,1) double {mustBeNumeric, mustBePositive} = 125e-3
+      args.Mpm (1,1) double {mustBeNumeric, mustBePositive} = 1
+      args.Mph (1,1) double {mustBeNumeric, mustBePositive} = 10e-3
+      args.Mpr (1,1) double {mustBeNumeric, mustBePositive} = 100e-3
+  end
+#+end_src
+
+*** Compute the Inertia matrices of platforms
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  I_F = diag([1/12*args.Fpm * (3*args.Fpr^2 + args.Fph^2), ...
+              1/12*args.Fpm * (3*args.Fpr^2 + args.Fph^2), ...
+              1/2 *args.Fpm * args.Fpr^2]);
+#+end_src
+
+#+begin_src matlab
+  I_M = diag([1/12*args.Mpm * (3*args.Mpr^2 + args.Mph^2), ...
+              1/12*args.Mpm * (3*args.Mpr^2 + args.Mph^2), ...
+              1/2 *args.Mpm * args.Mpr^2]);
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.platform_F.type = 1;
+
+  stewart.platform_F.I = I_F;
+  stewart.platform_F.M = args.Fpm;
+  stewart.platform_F.R = args.Fpr;
+  stewart.platform_F.H = args.Fph;
+#+end_src
+
+#+begin_src matlab
+  stewart.platform_M.type = 1;
+
+  stewart.platform_M.I = I_M;
+  stewart.platform_M.M = args.Mpm;
+  stewart.platform_M.R = args.Mpr;
+  stewart.platform_M.H = args.Mph;
+#+end_src
+
+** =initializeSolidPlatforms=: Initialize the geometry of the Fixed and Mobile Platforms
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeSolidPlatforms.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeSolidPlatforms>>
+
+This Matlab function is accessible [[file:../../src/initializeSolidPlatforms.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeSolidPlatforms(stewart, args)
+  % initializeSolidPlatforms - Initialize the geometry of the Fixed and Mobile Platforms
+  %
+  % Syntax: [stewart] = initializeSolidPlatforms(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - density [1x1] - Density of the platforms [kg]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - platform_F [struct] - structure with the following fields:
+  %        - type = 2
+  %        - M [1x1] - Fixed Platform Density [kg/m^3]
+  %      - platform_M [struct] - structure with the following fields:
+  %        - type = 2
+  %        - M [1x1] - Mobile Platform Density [kg/m^3]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.density (1,1) double {mustBeNumeric, mustBePositive} = 7800
+  end
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.platform_F.type = 2;
+
+  stewart.platform_F.density = args.density;
+#+end_src
+
+#+begin_src matlab
+  stewart.platform_M.type = 2;
+
+  stewart.platform_M.density = args.density;
+#+end_src
+
+** =initializeCylindricalStruts=: Define the inertia of cylindrical struts
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeCylindricalStruts.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeCylindricalStruts>>
+
+This Matlab function is accessible [[file:../../src/initializeCylindricalStruts.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeCylindricalStruts(stewart, args)
+  % initializeCylindricalStruts - Define the mass and moment of inertia of cylindrical struts
+  %
+  % Syntax: [stewart] = initializeCylindricalStruts(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - Fsm [1x1] - Mass of the Fixed part of the struts [kg]
+  %        - Fsh [1x1] - Height of cylinder for the Fixed part of the struts [m]
+  %        - Fsr [1x1] - Radius of cylinder for the Fixed part of the struts [m]
+  %        - Msm [1x1] - Mass of the Mobile part of the struts [kg]
+  %        - Msh [1x1] - Height of cylinder for the Mobile part of the struts [m]
+  %        - Msr [1x1] - Radius of cylinder for the Mobile part of the struts [m]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - struts_F [struct] - structure with the following fields:
+  %        - M [6x1]   - Mass of the Fixed part of the struts [kg]
+  %        - I [3x3x6] - Moment of Inertia for the Fixed part of the struts [kg*m^2]
+  %        - H [6x1]   - Height of cylinder for the Fixed part of the struts [m]
+  %        - R [6x1]   - Radius of cylinder for the Fixed part of the struts [m]
+  %      - struts_M [struct] - structure with the following fields:
+  %        - M [6x1]   - Mass of the Mobile part of the struts [kg]
+  %        - I [3x3x6] - Moment of Inertia for the Mobile part of the struts [kg*m^2]
+  %        - H [6x1]   - Height of cylinder for the Mobile part of the struts [m]
+  %        - R [6x1]   - Radius of cylinder for the Mobile part of the struts [m]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.type_F    char   {mustBeMember(args.type_F,{'cylindrical', 'none'})} = 'cylindrical'
+      args.type_M    char   {mustBeMember(args.type_M,{'cylindrical', 'none'})} = 'cylindrical'
+      args.Fsm (1,1) double {mustBeNumeric, mustBePositive} = 0.1
+      args.Fsh (1,1) double {mustBeNumeric, mustBePositive} = 50e-3
+      args.Fsr (1,1) double {mustBeNumeric, mustBePositive} = 5e-3
+      args.Msm (1,1) double {mustBeNumeric, mustBePositive} = 0.1
+      args.Msh (1,1) double {mustBeNumeric, mustBePositive} = 50e-3
+      args.Msr (1,1) double {mustBeNumeric, mustBePositive} = 5e-3
+  end
+#+end_src
+
+*** Compute the properties of the cylindrical struts
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+begin_src matlab
+  Fsm = ones(6,1).*args.Fsm;
+  Fsh = ones(6,1).*args.Fsh;
+  Fsr = ones(6,1).*args.Fsr;
+
+  Msm = ones(6,1).*args.Msm;
+  Msh = ones(6,1).*args.Msh;
+  Msr = ones(6,1).*args.Msr;
+#+end_src
+
+#+begin_src matlab
+  I_F = zeros(3, 3, 6); % Inertia of the "fixed" part of the strut
+  I_M = zeros(3, 3, 6); % Inertia of the "mobile" part of the strut
+
+  for i = 1:6
+    I_F(:,:,i) = diag([1/12 * Fsm(i) * (3*Fsr(i)^2 + Fsh(i)^2), ...
+                       1/12 * Fsm(i) * (3*Fsr(i)^2 + Fsh(i)^2), ...
+                       1/2  * Fsm(i) * Fsr(i)^2]);
+
+    I_M(:,:,i) = diag([1/12 * Msm(i) * (3*Msr(i)^2 + Msh(i)^2), ...
+                       1/12 * Msm(i) * (3*Msr(i)^2 + Msh(i)^2), ...
+                       1/2  * Msm(i) * Msr(i)^2]);
+  end
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  switch args.type_M
+    case 'cylindrical'
+      stewart.struts_M.type = 1;
+    case 'none'
+      stewart.struts_M.type = 2;
+  end
+
+  stewart.struts_M.I = I_M;
+  stewart.struts_M.M = Msm;
+  stewart.struts_M.R = Msr;
+  stewart.struts_M.H = Msh;
+#+end_src
+
+#+begin_src matlab
+  switch args.type_F
+    case 'cylindrical'
+      stewart.struts_F.type = 1;
+    case 'none'
+      stewart.struts_F.type = 2;
+  end
+
+  stewart.struts_F.I = I_F;
+  stewart.struts_F.M = Fsm;
+  stewart.struts_F.R = Fsr;
+  stewart.struts_F.H = Fsh;
+#+end_src
+
+** =initializeStrutDynamics=: Add Stiffness and Damping properties of each strut
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeStrutDynamics.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeStrutDynamics>>
+
+This Matlab function is accessible [[file:../../src/initializeStrutDynamics.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+name: fig:piezoelectric_stack
+#+attr_html: :width 500px
+#+caption: Example of a piezoelectric stach actuator (PI)
+[[file:figs/piezoelectric_stack.jpg]]
+
+A simplistic model of such amplified actuator is shown in Figure [[fig:actuator_model_simple]] where:
+- $K$ represent the vertical stiffness of the actuator
+- $C$ represent the vertical damping of the actuator
+- $F$ represents the force applied by the actuator
+- $F_{m}$ represents the total measured force
+- $v_{m}$ represents the absolute velocity of the top part of the actuator
+- $d_{m}$ represents the total relative displacement of the actuator
+
+#+begin_src latex :file actuator_model_simple.pdf
+  \begin{tikzpicture}
+    \draw (-1, 0) -- (1, 0);
+
+    % Spring, Damper, and Actuator
+    \draw[spring]   (-1, 0) -- (-1, 1.5) node[midway, left=0.1]{$K$};
+    \draw[damper]   ( 0, 0) -- ( 0, 1.5) node[midway, left=0.2]{$C$};
+    \draw[actuator] ( 1, 0) -- ( 1, 1.5) node[midway, left=0.1](F){$F$};
+
+    \node[forcesensor={2}{0.2}] (fsens) at (0, 1.5){};
+
+    \node[left] at (fsens.west) {$F_{m}$};
+
+    \draw[dashed] (1, 0) -- ++(0.4, 0);
+    \draw[dashed] (1, 1.7) -- ++(0.4, 0);
+
+    \draw[->] (0, 1.7)node[]{$\bullet$} -- ++(0, 0.5) node[right]{$v_{m}$};
+
+    \draw[<->] (1.4, 0) -- ++(0, 1.7) node[midway, right]{$d_{m}$};
+  \end{tikzpicture}
+#+end_src
+
+#+name: fig:actuator_model_simple
+#+caption: Simple model of an Actuator
+#+RESULTS:
+[[file:figs/actuator_model_simple.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeStrutDynamics(stewart, args)
+  % initializeStrutDynamics - Add Stiffness and Damping properties of each strut
+  %
+  % Syntax: [stewart] = initializeStrutDynamics(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - K [6x1] - Stiffness of each strut [N/m]
+  %        - C [6x1] - Damping of each strut [N/(m/s)]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - actuators.type = 1
+  %      - actuators.K [6x1] - Stiffness of each strut [N/m]
+  %      - actuators.C [6x1] - Damping of each strut [N/(m/s)]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.K (6,1) double {mustBeNumeric, mustBeNonnegative} = 20e6*ones(6,1)
+      args.C (6,1) double {mustBeNumeric, mustBeNonnegative} = 2e1*ones(6,1)
+  end
+#+end_src
+
+*** Add Stiffness and Damping properties of each strut
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.actuators.type = 1;
+
+  stewart.actuators.K = args.K;
+  stewart.actuators.C = args.C;
+#+end_src
+
+** =initializeAmplifiedStrutDynamics=: Add Stiffness and Damping properties of each strut for an amplified piezoelectric actuator
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeAmplifiedStrutDynamics.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeAmplifiedStrutDynamics>>
+
+This Matlab function is accessible [[file:../../src/initializeAmplifiedStrutDynamics.m][here]].
+
+*** Documentation
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+An amplified piezoelectric actuator is shown in Figure [[fig:cedrat_apa95ml]].
+
+#+name: fig:cedrat_apa95ml
+#+attr_html: :width 500px
+#+caption: Example of an Amplified piezoelectric actuator with an integrated displacement sensor (Cedrat Technologies)
+[[file:figs/amplified_piezo_with_displacement_sensor.jpg]]
+
+A simplistic model of such amplified actuator is shown in Figure [[fig:souleille18_model_piezo]] where the parameters are described in Table [[tab:parameters_amplified_piezo]].
+
+#+name: tab:parameters_amplified_piezo
+#+caption: Parameters used for the model of the APA 100M
+|       | Meaning                                                        |
+|-------+----------------------------------------------------------------|
+| $k_e$ | Stiffness used to adjust the pole of the isolator              |
+| $k_1$ | Stiffness of the metallic suspension when the stack is removed |
+| $k_a$ | Stiffness of the actuator                                      |
+| $c_1$ | Added viscous damping                                          |
+
+#+name: fig:souleille18_model_piezo
+#+caption: Picture of an APA100M from Cedrat Technologies. Simplified model of a one DoF payload mounted on such isolator
+[[file:./figs/souleille18_model_piezo.png]]
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeAmplifiedStrutDynamics(stewart, args)
+  % initializeAmplifiedStrutDynamics - Add Stiffness and Damping properties of each strut
+  %
+  % Syntax: [stewart] = initializeAmplifiedStrutDynamics(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - Ka [6x1] - Stiffness of the actuator [N/m]
+  %        - Ke [6x1] - Stiffness used to adjust the pole of the isolator [N/m]
+  %        - K1 [6x1] - Stiffness of the metallic suspension when the stack is removed [N/m]
+  %        - C1 [6x1] - Added viscous damping [N/(m/s)]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - actuators.type = 2
+  %      - actuators.K   [6x1] - Total Stiffness of each strut [N/m]
+  %      - actuators.C   [6x1] - Total Damping of each strut [N/(m/s)]
+  %      - actuators.Ka [6x1] - Stiffness of the actuator [N/m]
+  %      - actuators.Ke [6x1] - Stiffness used to adjust the pole of the isolator [N/m]
+  %      - actuators.K1 [6x1] - Stiffness of the metallic suspension when the stack is removed [N/m]
+  %      - actuators.C1 [6x1] - Added viscous damping [N/(m/s)]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.Ke (6,1) double {mustBeNumeric, mustBeNonnegative} = 1.5e6*ones(6,1)
+      args.Ka (6,1) double {mustBeNumeric, mustBeNonnegative} = 43e6*ones(6,1)
+      args.K1 (6,1) double {mustBeNumeric, mustBeNonnegative} = 0.4e6*ones(6,1)
+      args.C1 (6,1) double {mustBeNumeric, mustBeNonnegative} = 10*ones(6,1)
+  end
+#+end_src
+
+*** Compute the total stiffness and damping
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  K = args.K1 + args.Ka.*args.Ke./(args.Ka + args.Ke);
+  C = args.C1;
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.actuators.type = 2;
+
+  stewart.actuators.Ka = args.Ka;
+  stewart.actuators.Ke = args.Ke;
+  stewart.actuators.K1 = args.K1;
+  stewart.actuators.C1 = args.C1;
+
+  stewart.actuators.K = K;
+  stewart.actuators.C = C;
+#+end_src
+
+** TODO =initializeFlexibleStrutDynamics=: Model each strut with a flexible element
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeFlexibleStrutDynamics.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeFlexibleStrutDynamics>>
+
+This Matlab function is accessible [[file:../../src/initializeFlexibleStrutDynamics.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeFlexibleStrutDynamics(stewart, args)
+  % initializeFlexibleStrutDynamics - Add Stiffness and Damping properties of each strut
+  %
+  % Syntax: [stewart] = initializeFlexibleStrutDynamics(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - K [nxn] - Vertical stiffness contribution of the piezoelectric stack [N/m]
+  %        - M [nxn] - Vertical damping contribution of the piezoelectric stack [N/(m/s)]
+  %        - xi        [1x1] - Vertical (residual) stiffness when the piezoelectric stack is removed [N/m]
+  %        - step_file [6x1] - Vertical (residual) damping when the piezoelectric stack is removed [N/(m/s)]
+  %        - Gf [6x1] - Gain from strain in [m] to measured [N] such that it matches
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.K        double {mustBeNumeric} = zeros(6,6)
+      args.M        double {mustBeNumeric} = zeros(6,6)
+      args.H        double {mustBeNumeric} = 0
+      args.n_xyz    double {mustBeNumeric} = zeros(2,3)
+      args.xi       double {mustBeNumeric} = 0.1
+      args.Gf       double {mustBeNumeric} = 1
+      args.step_file char {} = ''
+  end
+#+end_src
+
+*** Compute the axial offset
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+begin_src matlab
+  stewart.actuators.ax_off = (stewart.geometry.l(1) - args.H)/2; % Axial Offset at the ends of the actuator
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.actuators.type = 3;
+
+  stewart.actuators.Km = args.K;
+  stewart.actuators.Mm = args.M;
+
+  stewart.actuators.n_xyz = args.n_xyz;
+  stewart.actuators.xi = args.xi;
+
+  stewart.actuators.step_file = args.step_file;
+
+  stewart.actuators.K = args.K(3,3); % Axial Stiffness
+
+  stewart.actuators.Gf = args.Gf;
+#+end_src
+
+** TODO =initializeJointDynamics=: Add Stiffness and Damping properties for spherical joints
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeJointDynamics.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeJointDynamics>>
+
+This Matlab function is accessible [[file:../../src/initializeJointDynamics.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeJointDynamics(stewart, args)
+  % initializeJointDynamics - Add Stiffness and Damping properties for the spherical joints
+  %
+  % Syntax: [stewart] = initializeJointDynamics(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - type_F - 'universal', 'spherical', 'universal_p', 'spherical_p'
+  %        - type_M - 'universal', 'spherical', 'universal_p', 'spherical_p'
+  %        - Kf_M [6x1] - Bending (Rx, Ry) Stiffness for each top joints [(N.m)/rad]
+  %        - Kt_M [6x1] - Torsion (Rz) Stiffness for each top joints [(N.m)/rad]
+  %        - Cf_M [6x1] - Bending (Rx, Ry) Damping of each top joint [(N.m)/(rad/s)]
+  %        - Ct_M [6x1] - Torsion (Rz) Damping of each top joint [(N.m)/(rad/s)]
+  %        - Kf_F [6x1] - Bending (Rx, Ry) Stiffness for each bottom joints [(N.m)/rad]
+  %        - Kt_F [6x1] - Torsion (Rz) Stiffness for each bottom joints [(N.m)/rad]
+  %        - Cf_F [6x1] - Bending (Rx, Ry) Damping of each bottom joint [(N.m)/(rad/s)]
+  %        - Cf_F [6x1] - Torsion (Rz) Damping of each bottom joint [(N.m)/(rad/s)]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - stewart.joints_F and stewart.joints_M:
+  %        - type - 1 (universal), 2 (spherical), 3 (universal perfect), 4 (spherical perfect)
+  %        - Kx, Ky, Kz [6x1] - Translation (Tx, Ty, Tz) Stiffness [N/m]
+  %        - Kf [6x1] - Flexion (Rx, Ry) Stiffness [(N.m)/rad]
+  %        - Kt [6x1] - Torsion (Rz) Stiffness [(N.m)/rad]
+  %        - Cx, Cy, Cz [6x1] - Translation (Rx, Ry) Damping [N/(m/s)]
+  %        - Cf [6x1] - Flexion (Rx, Ry) Damping [(N.m)/(rad/s)]
+  %        - Cb [6x1] - Torsion (Rz) Damping [(N.m)/(rad/s)]
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.type_F     char   {mustBeMember(args.type_F,{'universal', 'spherical', 'universal_p', 'spherical_p', 'universal_3dof', 'spherical_3dof', 'flexible'})} = 'universal'
+      args.type_M     char   {mustBeMember(args.type_M,{'universal', 'spherical', 'universal_p', 'spherical_p', 'universal_3dof', 'spherical_3dof', 'flexible'})} = 'spherical'
+      args.Kf_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 33*ones(6,1)
+      args.Cf_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e-4*ones(6,1)
+      args.Kt_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 236*ones(6,1)
+      args.Ct_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e-3*ones(6,1)
+      args.Kf_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 33*ones(6,1)
+      args.Cf_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e-4*ones(6,1)
+      args.Kt_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 236*ones(6,1)
+      args.Ct_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e-3*ones(6,1)
+      args.Ka_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1.2e8*ones(6,1)
+      args.Ca_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e1*ones(6,1)
+      args.Kr_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1.1e7*ones(6,1)
+      args.Cr_F (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e1*ones(6,1)
+      args.Ka_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1.2e8*ones(6,1)
+      args.Ca_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e1*ones(6,1)
+      args.Kr_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1.1e7*ones(6,1)
+      args.Cr_M (6,1) double {mustBeNumeric, mustBeNonnegative} = 1e1*ones(6,1)
+      args.K_M        double {mustBeNumeric} = zeros(6,6)
+      args.M_M        double {mustBeNumeric} = zeros(6,6)
+      args.n_xyz_M    double {mustBeNumeric} = zeros(2,3)
+      args.xi_M       double {mustBeNumeric} = 0.1
+      args.step_file_M char {} = ''
+      args.K_F        double {mustBeNumeric} = zeros(6,6)
+      args.M_F        double {mustBeNumeric} = zeros(6,6)
+      args.n_xyz_F    double {mustBeNumeric} = zeros(2,3)
+      args.xi_F       double {mustBeNumeric} = 0.1
+      args.step_file_F char {} = ''
+  end
+#+end_src
+
+*** Add Actuator Type
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  switch args.type_F
+    case 'universal'
+      stewart.joints_F.type = 1;
+    case 'spherical'
+      stewart.joints_F.type = 2;
+    case 'universal_p'
+      stewart.joints_F.type = 3;
+    case 'spherical_p'
+      stewart.joints_F.type = 4;
+    case 'flexible'
+      stewart.joints_F.type = 5;
+    case 'universal_3dof'
+      stewart.joints_F.type = 6;
+    case 'spherical_3dof'
+      stewart.joints_F.type = 7;
+  end
+
+  switch args.type_M
+    case 'universal'
+      stewart.joints_M.type = 1;
+    case 'spherical'
+      stewart.joints_M.type = 2;
+    case 'universal_p'
+      stewart.joints_M.type = 3;
+    case 'spherical_p'
+      stewart.joints_M.type = 4;
+    case 'flexible'
+      stewart.joints_M.type = 5;
+    case 'universal_3dof'
+      stewart.joints_M.type = 6;
+    case 'spherical_3dof'
+      stewart.joints_M.type = 7;
+  end
+#+end_src
+
+*** Add Stiffness and Damping in Translation of each strut
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Axial and Radial (shear) Stiffness
+#+begin_src matlab
+  stewart.joints_M.Ka = args.Ka_M;
+  stewart.joints_M.Kr = args.Kr_M;
+
+  stewart.joints_F.Ka = args.Ka_F;
+  stewart.joints_F.Kr = args.Kr_F;
+#+end_src
+
+Translation Damping
+#+begin_src matlab
+  stewart.joints_M.Ca = args.Ca_M;
+  stewart.joints_M.Cr = args.Cr_M;
+
+  stewart.joints_F.Ca = args.Ca_F;
+  stewart.joints_F.Cr = args.Cr_F;
+#+end_src
+
+*** Add Stiffness and Damping in Rotation of each strut
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Rotational Stiffness
+#+begin_src matlab
+  stewart.joints_M.Kf = args.Kf_M;
+  stewart.joints_M.Kt = args.Kt_M;
+
+  stewart.joints_F.Kf = args.Kf_F;
+  stewart.joints_F.Kt = args.Kt_F;
+#+end_src
+
+Rotational Damping
+#+begin_src matlab
+  stewart.joints_M.Cf = args.Cf_M;
+  stewart.joints_M.Ct = args.Ct_M;
+
+  stewart.joints_F.Cf = args.Cf_F;
+  stewart.joints_F.Ct = args.Ct_F;
+#+end_src
+
+*** Stiffness and Mass matrices for flexible joint
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+begin_src matlab
+  stewart.joints_F.M = args.M_F;
+  stewart.joints_F.K = args.K_F;
+  stewart.joints_F.n_xyz = args.n_xyz_F;
+  stewart.joints_F.xi = args.xi_F;
+  stewart.joints_F.xi = args.xi_F;
+  stewart.joints_F.step_file = args.step_file_F;
+
+  stewart.joints_M.M = args.M_M;
+  stewart.joints_M.K = args.K_M;
+  stewart.joints_M.n_xyz = args.n_xyz_M;
+  stewart.joints_M.xi = args.xi_M;
+  stewart.joints_M.step_file = args.step_file_M;
+#+end_src
+
+** TODO =initializeFlexibleStrutAndJointDynamics=: Model each strut with a flexible element
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeFlexibleStrutAndJointDynamics.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeFlexibleStrutAndJointDynamics>>
+
+This Matlab function is accessible [[file:../../src/initializeFlexibleStrutAndJointDynamics.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeFlexibleStrutAndJointDynamics(stewart, args)
+  % initializeFlexibleStrutAndJointDynamics - Add Stiffness and Damping properties of each strut
+  %
+  % Syntax: [stewart] = initializeFlexibleStrutAndJointDynamics(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - K [nxn] - Vertical stiffness contribution of the piezoelectric stack [N/m]
+  %        - M [nxn] - Vertical damping contribution of the piezoelectric stack [N/(m/s)]
+  %        - xi        [1x1] - Vertical (residual) stiffness when the piezoelectric stack is removed [N/m]
+  %        - step_file [6x1] - Vertical (residual) damping when the piezoelectric stack is removed [N/(m/s)]
+  %        - Gf [6x1] - Gain from strain in [m] to measured [N] such that it matches
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.K        double {mustBeNumeric} = zeros(6,6)
+      args.M        double {mustBeNumeric} = zeros(6,6)
+      args.H        double {mustBeNumeric} = 0
+      args.n_xyz    double {mustBeNumeric} = zeros(2,3)
+      args.xi       double {mustBeNumeric} = 0.1
+      args.Gf       double {mustBeNumeric} = 1
+      args.step_file char {} = ''
+  end
+#+end_src
+
+*** Compute the axial offset
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+#+begin_src matlab
+  stewart.actuators.ax_off = (stewart.geometry.l(1) - args.H)/2; % Axial Offset at the ends of the actuator
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+No discrete joints:
+#+begin_src matlab
+  stewart.joints_F.type = 10;
+  stewart.joints_M.type = 10;
+
+#+end_src
+
+No discrete struts:
+#+begin_src matlab
+  stewart.struts_F.type = 3;
+  stewart.struts_M.type = 3;
+#+end_src
+
+#+begin_src matlab
+  stewart.actuators.type = 4;
+
+  stewart.actuators.Km = args.K;
+  stewart.actuators.Mm = args.M;
+
+  stewart.actuators.n_xyz = args.n_xyz;
+  stewart.actuators.xi = args.xi;
+
+  stewart.actuators.step_file = args.step_file;
+
+  stewart.actuators.K = args.K(3,3); % Axial Stiffness
+
+  stewart.actuators.Gf = args.Gf;
+#+end_src
+
+** =initializeInertialSensor=: Initialize the inertial sensor in each strut
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/initializeInertialSensor.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:initializeInertialSensor>>
+
+This Matlab function is accessible [[file:../../src/initializeInertialSensor.m][here]].
+
+*** Geophone - Working Principle
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+From the schematic of the Z-axis geophone shown in Figure [[fig:z_axis_geophone]], we can write the transfer function from the support velocity $\dot{w}$ to the relative velocity of the inertial mass $\dot{d}$:
+\[ \frac{\dot{d}}{\dot{w}} = \frac{-\frac{s^2}{{\omega_0}^2}}{\frac{s^2}{{\omega_0}^2} + 2 \xi \frac{s}{\omega_0} + 1} \]
+with:
+- $\omega_0 = \sqrt{\frac{k}{m}}$
+- $\xi = \frac{1}{2} \sqrt{\frac{m}{k}}$
+
+#+name: fig:z_axis_geophone
+#+caption: Schematic of a Z-Axis geophone
+[[file:figs/inertial_sensor.png]]
+
+We see that at frequencies above $\omega_0$:
+\[ \frac{\dot{d}}{\dot{w}} \approx -1 \]
+
+And thus, the measurement of the relative velocity of the mass with respect to its support gives the absolute velocity of the support.
+
+We generally want to have the smallest resonant frequency $\omega_0$ to measure low frequency absolute velocity, however there is a trade-off between $\omega_0$ and the mass of the inertial mass.
+
+*** Accelerometer - Working Principle
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+From the schematic of the Z-axis accelerometer shown in Figure [[fig:z_axis_accelerometer]], we can write the transfer function from the support acceleration $\ddot{w}$ to the relative position of the inertial mass $d$:
+\[ \frac{d}{\ddot{w}} = \frac{-\frac{1}{{\omega_0}^2}}{\frac{s^2}{{\omega_0}^2} + 2 \xi \frac{s}{\omega_0} + 1} \]
+with:
+- $\omega_0 = \sqrt{\frac{k}{m}}$
+- $\xi = \frac{1}{2} \sqrt{\frac{m}{k}}$
+
+#+name: fig:z_axis_accelerometer
+#+caption: Schematic of a Z-Axis geophone
+[[file:figs/inertial_sensor.png]]
+
+We see that at frequencies below $\omega_0$:
+\[ \frac{d}{\ddot{w}} \approx -\frac{1}{{\omega_0}^2} \]
+
+And thus, the measurement of the relative displacement of the mass with respect to its support gives the absolute acceleration of the support.
+
+Note that there is trade-off between:
+- the highest measurable acceleration $\omega_0$
+- the sensitivity of the accelerometer which is equal to $-\frac{1}{{\omega_0}^2}$
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [stewart] = initializeInertialSensor(stewart, args)
+  % initializeInertialSensor - Initialize the inertial sensor in each strut
+  %
+  % Syntax: [stewart] = initializeInertialSensor(args)
+  %
+  % Inputs:
+  %    - args - Structure with the following fields:
+  %        - type       - 'geophone', 'accelerometer', 'none'
+  %        - mass [1x1] - Weight of the inertial mass [kg]
+  %        - freq [1x1] - Cutoff frequency [Hz]
+  %
+  % Outputs:
+  %    - stewart - updated Stewart structure with the added fields:
+  %      - stewart.sensors.inertial
+  %        - type    - 1 (geophone), 2 (accelerometer), 3 (none)
+  %        - K [1x1] - Stiffness [N/m]
+  %        - C [1x1] - Damping [N/(m/s)]
+  %        - M [1x1] - Inertial Mass [kg]
+  %        - G [1x1] - Gain
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.type       char   {mustBeMember(args.type,{'geophone', 'accelerometer', 'none'})} = 'none'
+      args.mass (1,1) double {mustBeNumeric, mustBeNonnegative} = 1e-2
+      args.freq (1,1) double {mustBeNumeric, mustBeNonnegative} = 1e3
+  end
+#+end_src
+
+*** Compute the properties of the sensor
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  sensor = struct();
+
+  switch args.type
+    case 'geophone'
+      sensor.type = 1;
+
+      sensor.M = args.mass;
+      sensor.K = sensor.M * (2*pi*args.freq)^2;
+      sensor.C = 2*sqrt(sensor.M * sensor.K);
+    case 'accelerometer'
+      sensor.type = 2;
+
+      sensor.M = args.mass;
+      sensor.K = sensor.M * (2*pi*args.freq)^2;
+      sensor.C = 2*sqrt(sensor.M * sensor.K);
+      sensor.G = -sensor.K/sensor.M;
+    case 'none'
+      sensor.type = 3;
+  end
+#+end_src
+
+*** Populate the =stewart= structure
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  stewart.sensors.inertial = sensor;
+#+end_src
+
+** =displayArchitecture=: 3D plot of the Stewart platform architecture
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/displayArchitecture.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:displayArchitecture>>
+
+This Matlab function is accessible [[file:../../src/displayArchitecture.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [] = displayArchitecture(stewart, args)
+  % displayArchitecture - 3D plot of the Stewart platform architecture
+  %
+  % Syntax: [] = displayArchitecture(args)
+  %
+  % Inputs:
+  %    - stewart
+  %    - args - Structure with the following fields:
+  %        - AP   [3x1] - The wanted position of {B} with respect to {A}
+  %        - ARB  [3x3] - The rotation matrix that gives the wanted orientation of {B} with respect to {A}
+  %        - ARB  [3x3] - The rotation matrix that gives the wanted orientation of {B} with respect to {A}
+  %        - F_color [color] - Color used for the Fixed elements
+  %        - M_color [color] - Color used for the Mobile elements
+  %        - L_color [color] - Color used for the Legs elements
+  %        - frames    [true/false] - Display the Frames
+  %        - legs      [true/false] - Display the Legs
+  %        - joints    [true/false] - Display the Joints
+  %        - labels    [true/false] - Display the Labels
+  %        - platforms [true/false] - Display the Platforms
+  %        - views     ['all', 'xy', 'yz', 'xz', 'default'] -
+  %
+  % Outputs:
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+      args.AP  (3,1) double {mustBeNumeric} = zeros(3,1)
+      args.ARB (3,3) double {mustBeNumeric} = eye(3)
+      args.F_color = [0 0.4470 0.7410]
+      args.M_color = [0.8500 0.3250 0.0980]
+      args.L_color = [0 0 0]
+      args.frames    logical {mustBeNumericOrLogical} = true
+      args.legs      logical {mustBeNumericOrLogical} = true
+      args.joints    logical {mustBeNumericOrLogical} = true
+      args.labels    logical {mustBeNumericOrLogical} = true
+      args.platforms logical {mustBeNumericOrLogical} = true
+      args.views     char    {mustBeMember(args.views,{'all', 'xy', 'xz', 'yz', 'default'})} = 'default'
+  end
+#+end_src
+
+*** Check the =stewart= structure elements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  assert(isfield(stewart.platform_F, 'FO_A'), 'stewart.platform_F should have attribute FO_A')
+  FO_A = stewart.platform_F.FO_A;
+
+  assert(isfield(stewart.platform_M, 'MO_B'), 'stewart.platform_M should have attribute MO_B')
+  MO_B = stewart.platform_M.MO_B;
+
+  assert(isfield(stewart.geometry, 'H'),   'stewart.geometry should have attribute H')
+  H = stewart.geometry.H;
+
+  assert(isfield(stewart.platform_F, 'Fa'),   'stewart.platform_F should have attribute Fa')
+  Fa = stewart.platform_F.Fa;
+
+  assert(isfield(stewart.platform_M, 'Mb'),   'stewart.platform_M should have attribute Mb')
+  Mb = stewart.platform_M.Mb;
+#+end_src
+
+
+*** Figure Creation, Frames and Homogeneous transformations
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+The reference frame of the 3d plot corresponds to the frame $\{F\}$.
+#+begin_src matlab
+  if ~strcmp(args.views, 'all')
+    figure;
+  else
+    f = figure('visible', 'off');
+  end
+
+  hold on;
+#+end_src
+
+We first compute homogeneous matrices that will be useful to position elements on the figure where the reference frame is $\{F\}$.
+#+begin_src matlab
+  FTa = [eye(3), FO_A; ...
+         zeros(1,3), 1];
+  ATb = [args.ARB, args.AP; ...
+         zeros(1,3), 1];
+  BTm = [eye(3), -MO_B; ...
+         zeros(1,3), 1];
+
+  FTm = FTa*ATb*BTm;
+#+end_src
+
+Let's define a parameter that define the length of the unit vectors used to display the frames.
+#+begin_src matlab
+  d_unit_vector = H/4;
+#+end_src
+
+Let's define a parameter used to position the labels with respect to the center of the element.
+#+begin_src matlab
+  d_label = H/20;
+#+end_src
+
+*** Fixed Base elements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Let's first plot the frame $\{F\}$.
+#+begin_src matlab
+  Ff = [0, 0, 0];
+  if args.frames
+    quiver3(Ff(1)*ones(1,3), Ff(2)*ones(1,3), Ff(3)*ones(1,3), ...
+            [d_unit_vector 0 0], [0 d_unit_vector 0], [0 0 d_unit_vector], '-', 'Color', args.F_color)
+
+    if args.labels
+      text(Ff(1) + d_label, ...
+          Ff(2) + d_label, ...
+          Ff(3) + d_label, '$\{F\}$', 'Color', args.F_color);
+    end
+  end
+#+end_src
+
+Now plot the frame $\{A\}$ fixed to the Base.
+#+begin_src matlab
+  if args.frames
+    quiver3(FO_A(1)*ones(1,3), FO_A(2)*ones(1,3), FO_A(3)*ones(1,3), ...
+            [d_unit_vector 0 0], [0 d_unit_vector 0], [0 0 d_unit_vector], '-', 'Color', args.F_color)
+
+    if args.labels
+      text(FO_A(1) + d_label, ...
+           FO_A(2) + d_label, ...
+           FO_A(3) + d_label, '$\{A\}$', 'Color', args.F_color);
+    end
+  end
+#+end_src
+
+Let's then plot the circle corresponding to the shape of the Fixed base.
+#+begin_src matlab
+  if args.platforms && stewart.platform_F.type == 1
+    theta = [0:0.01:2*pi+0.01]; % Angles [rad]
+    v = null([0; 0; 1]'); % Two vectors that are perpendicular to the circle normal
+    center = [0; 0; 0]; % Center of the circle
+    radius = stewart.platform_F.R; % Radius of the circle [m]
+
+    points = center*ones(1, length(theta)) + radius*(v(:,1)*cos(theta) + v(:,2)*sin(theta));
+
+    plot3(points(1,:), ...
+          points(2,:), ...
+          points(3,:), '-', 'Color', args.F_color);
+  end
+#+end_src
+
+Let's now plot the position and labels of the Fixed Joints
+#+begin_src matlab
+  if args.joints
+    scatter3(Fa(1,:), ...
+             Fa(2,:), ...
+             Fa(3,:), 'MarkerEdgeColor', args.F_color);
+    if args.labels
+      for i = 1:size(Fa,2)
+        text(Fa(1,i) + d_label, ...
+             Fa(2,i), ...
+             Fa(3,i), sprintf('$a_{%i}$', i), 'Color', args.F_color);
+      end
+    end
+  end
+#+end_src
+
+*** Mobile Platform elements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+
+Plot the frame $\{M\}$.
+#+begin_src matlab
+  Fm = FTm*[0; 0; 0; 1]; % Get the position of frame {M} w.r.t. {F}
+
+  if args.frames
+    FM_uv = FTm*[d_unit_vector*eye(3); zeros(1,3)]; % Rotated Unit vectors
+    quiver3(Fm(1)*ones(1,3), Fm(2)*ones(1,3), Fm(3)*ones(1,3), ...
+            FM_uv(1,1:3), FM_uv(2,1:3), FM_uv(3,1:3), '-', 'Color', args.M_color)
+
+    if args.labels
+      text(Fm(1) + d_label, ...
+           Fm(2) + d_label, ...
+           Fm(3) + d_label, '$\{M\}$', 'Color', args.M_color);
+    end
+  end
+#+end_src
+
+Plot the frame $\{B\}$.
+#+begin_src matlab
+  FB = FO_A + args.AP;
+
+  if args.frames
+    FB_uv = FTm*[d_unit_vector*eye(3); zeros(1,3)]; % Rotated Unit vectors
+    quiver3(FB(1)*ones(1,3), FB(2)*ones(1,3), FB(3)*ones(1,3), ...
+            FB_uv(1,1:3), FB_uv(2,1:3), FB_uv(3,1:3), '-', 'Color', args.M_color)
+
+    if args.labels
+      text(FB(1) - d_label, ...
+           FB(2) + d_label, ...
+           FB(3) + d_label, '$\{B\}$', 'Color', args.M_color);
+    end
+  end
+#+end_src
+
+Let's then plot the circle corresponding to the shape of the Mobile platform.
+#+begin_src matlab
+  if args.platforms && stewart.platform_M.type == 1
+    theta = [0:0.01:2*pi+0.01]; % Angles [rad]
+    v = null((FTm(1:3,1:3)*[0;0;1])'); % Two vectors that are perpendicular to the circle normal
+    center = Fm(1:3); % Center of the circle
+    radius = stewart.platform_M.R; % Radius of the circle [m]
+
+    points = center*ones(1, length(theta)) + radius*(v(:,1)*cos(theta) + v(:,2)*sin(theta));
+
+    plot3(points(1,:), ...
+          points(2,:), ...
+          points(3,:), '-', 'Color', args.M_color);
+  end
+#+end_src
+
+Plot the position and labels of the rotation joints fixed to the mobile platform.
+#+begin_src matlab
+  if args.joints
+    Fb = FTm*[Mb;ones(1,6)];
+
+    scatter3(Fb(1,:), ...
+             Fb(2,:), ...
+             Fb(3,:), 'MarkerEdgeColor', args.M_color);
+
+    if args.labels
+      for i = 1:size(Fb,2)
+        text(Fb(1,i) + d_label, ...
+             Fb(2,i), ...
+             Fb(3,i), sprintf('$b_{%i}$', i), 'Color', args.M_color);
+      end
+    end
+  end
+#+end_src
+
+*** Legs
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Plot the legs connecting the joints of the fixed base to the joints of the mobile platform.
+#+begin_src matlab
+  if args.legs
+    for i = 1:6
+      plot3([Fa(1,i), Fb(1,i)], ...
+            [Fa(2,i), Fb(2,i)], ...
+            [Fa(3,i), Fb(3,i)], '-', 'Color', args.L_color);
+
+      if args.labels
+        text((Fa(1,i)+Fb(1,i))/2 + d_label, ...
+             (Fa(2,i)+Fb(2,i))/2, ...
+             (Fa(3,i)+Fb(3,i))/2, sprintf('$%i$', i), 'Color', args.L_color);
+      end
+    end
+  end
+#+end_src
+
+*** Figure parameters
+#+begin_src matlab
+  switch args.views
+    case 'default'
+        view([1 -0.6 0.4]);
+    case 'xy'
+        view([0 0 1]);
+    case 'xz'
+        view([0 -1 0]);
+    case 'yz'
+        view([1 0 0]);
+  end
+  axis equal;
+  axis off;
+#+end_src
+
+*** Subplots
+#+begin_src matlab
+  if strcmp(args.views, 'all')
+    hAx = findobj('type', 'axes');
+
+    figure;
+    s1 = subplot(2,2,1);
+    copyobj(get(hAx(1), 'Children'), s1);
+    view([0 0 1]);
+    axis equal;
+    axis off;
+    title('Top')
+
+    s2 = subplot(2,2,2);
+    copyobj(get(hAx(1), 'Children'), s2);
+    view([1 -0.6 0.4]);
+    axis equal;
+    axis off;
+
+    s3 = subplot(2,2,3);
+    copyobj(get(hAx(1), 'Children'), s3);
+    view([1 0 0]);
+    axis equal;
+    axis off;
+    title('Front')
+
+    s4 = subplot(2,2,4);
+    copyobj(get(hAx(1), 'Children'), s4);
+    view([0 -1 0]);
+    axis equal;
+    axis off;
+    title('Side')
+
+    close(f);
+  end
+#+end_src
+
+
+** =describeStewartPlatform=: Display some text describing the current defined Stewart Platform
+:PROPERTIES:
+:header-args:matlab+: :tangle ../../src/describeStewartPlatform.m
+:header-args:matlab+: :comments none :mkdirp yes :eval no
+:END:
+<<sec:describeStewartPlatform>>
+
+This Matlab function is accessible [[file:../../src/describeStewartPlatform.m][here]].
+
+*** Function description
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  function [] = describeStewartPlatform(stewart)
+  % describeStewartPlatform - Display some text describing the current defined Stewart Platform
+  %
+  % Syntax: [] = describeStewartPlatform(args)
+  %
+  % Inputs:
+  %    - stewart
+  %
+  % Outputs:
+#+end_src
+
+*** Optional Parameters
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+#+begin_src matlab
+  arguments
+      stewart
+  end
+#+end_src
+
+*** Geometry
+#+begin_src matlab
+  fprintf('GEOMETRY:\n')
+  fprintf('- The height between the fixed based and the top platform is %.3g [mm].\n', 1e3*stewart.geometry.H)
+
+  if stewart.platform_M.MO_B(3) > 0
+    fprintf('- Frame {A} is located %.3g [mm] above the top platform.\n',  1e3*stewart.platform_M.MO_B(3))
+  else
+    fprintf('- Frame {A} is located %.3g [mm] below the top platform.\n', - 1e3*stewart.platform_M.MO_B(3))
+  end
+
+  fprintf('- The initial length of the struts are:\n')
+  fprintf('\t %.3g, %.3g, %.3g, %.3g, %.3g, %.3g [mm]\n', 1e3*stewart.geometry.l)
+  fprintf('\n')
+#+end_src
+
+*** Actuators
+#+begin_src matlab
+  fprintf('ACTUATORS:\n')
+  if stewart.actuators.type == 1
+      fprintf('- The actuators are classical.\n')
+      fprintf('- The Stiffness and Damping of each actuators is:\n')
+      fprintf('\t k = %.0e [N/m] \t c = %.0e [N/(m/s)]\n', stewart.actuators.K(1), stewart.actuators.C(1))
+  elseif stewart.actuators.type == 2
+      fprintf('- The actuators are mechanicaly amplified.\n')
+      fprintf('- The vertical stiffness and damping contribution of the piezoelectric stack is:\n')
+      fprintf('\t ka = %.0e [N/m] \t ca = %.0e [N/(m/s)]\n', stewart.actuators.Ka(1), stewart.actuators.Ca(1))
+      fprintf('- Vertical stiffness when the piezoelectric stack is removed is:\n')
+      fprintf('\t kr = %.0e [N/m] \t cr = %.0e [N/(m/s)]\n', stewart.actuators.Kr(1), stewart.actuators.Cr(1))
+  end
+  fprintf('\n')
+#+end_src
+
+*** Joints
+#+begin_src matlab
+  fprintf('JOINTS:\n')
+#+end_src
+
+Type of the joints on the fixed base.
+#+begin_src matlab
+  switch stewart.joints_F.type
+    case 1
+      fprintf('- The joints on the fixed based are universal joints\n')
+    case 2
+      fprintf('- The joints on the fixed based are spherical joints\n')
+    case 3
+      fprintf('- The joints on the fixed based are perfect universal joints\n')
+    case 4
+      fprintf('- The joints on the fixed based are perfect spherical joints\n')
+  end
+#+end_src
+
+Type of the joints on the mobile platform.
+#+begin_src matlab
+  switch stewart.joints_M.type
+    case 1
+      fprintf('- The joints on the mobile based are universal joints\n')
+    case 2
+      fprintf('- The joints on the mobile based are spherical joints\n')
+    case 3
+      fprintf('- The joints on the mobile based are perfect universal joints\n')
+    case 4
+      fprintf('- The joints on the mobile based are perfect spherical joints\n')
+  end
+#+end_src
+
+Position of the fixed joints
+#+begin_src matlab
+  fprintf('- The position of the joints on the fixed based with respect to {F} are (in [mm]):\n')
+  fprintf('\t % .3g \t % .3g \t % .3g\n', 1e3*stewart.platform_F.Fa)
+#+end_src
+
+Position of the mobile joints
+#+begin_src matlab
+  fprintf('- The position of the joints on the mobile based with respect to {M} are (in [mm]):\n')
+  fprintf('\t % .3g \t % .3g \t % .3g\n', 1e3*stewart.platform_M.Mb)
+  fprintf('\n')
+#+end_src
+
+*** Kinematics
+#+begin_src matlab
+  fprintf('KINEMATICS:\n')
+
+  if isfield(stewart.kinematics, 'K')
+    fprintf('- The Stiffness matrix K is (in [N/m]):\n')
+    fprintf('\t % .0e \t % .0e \t % .0e \t % .0e \t % .0e \t % .0e\n', stewart.kinematics.K)
+  end
+
+  if isfield(stewart.kinematics, 'C')
+    fprintf('- The Damping matrix C is (in [m/N]):\n')
+    fprintf('\t % .0e \t % .0e \t % .0e \t % .0e \t % .0e \t % .0e\n', stewart.kinematics.C)
+  end
+#+end_src
+
+* Bibliography                                                        :ignore:
+bibliographystyle:unsrt
+bibliography:ref.bib

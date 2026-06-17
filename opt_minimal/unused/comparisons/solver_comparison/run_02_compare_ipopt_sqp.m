@@ -28,7 +28,7 @@ addpath(fullfile(projectRoot, 'src'));
 addpath(optRoot);
 addpath(solverComparisonRoot);
 
-resultDir = fullfile(optRoot, 'results');
+resultDir = fullfile(projectRoot, 'results', 'controller');
 if ~exist(resultDir, 'dir')
     mkdir(resultDir);
 end

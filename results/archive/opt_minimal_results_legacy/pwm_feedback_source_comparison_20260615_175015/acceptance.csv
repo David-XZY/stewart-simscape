@@ -1,0 +1,16 @@
+check,passed
+finitePassed,1
+forceTrackingPassed,1
+strictTranslationPassed,0
+translationPassed,0
+estimatorTranslationPassed,0
+estimatorVelocityPassed,1
+rotationPassed,1
+pwmPassed,1
+forceLimitPassed,1
+truthIsolationPassed,1
+truthFeedbackFinitePassed,1
+truthFeedbackIsolationPassed,1
+truthFeedbackExactPassed,1
+truthFeedbackPwmPassed,1
+truthFeedbackForceLimitPassed,1

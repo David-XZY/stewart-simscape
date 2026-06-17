@@ -9,7 +9,7 @@
 %   buildCylinderBoxTransferScene 自动计算。
 %
 % 输出参数：
-%   在 opt_minimal/results 下保存 MAT、summary、console log、PNG 图和动画。
+%   在 results/trajectory_planning 下保存 MAT、summary、console log、PNG 图和动画。
 %
 % 核心公式：
 %   q0 -> qWaypoint -> qGoal；阶段 2 满足 p_C^B=[s;0;z_goal]、姿态等于长方体姿态。
@@ -21,12 +21,13 @@ clear; close all; clc;
 
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
 optRoot = fullfile(projectRoot, 'opt_minimal');
+controllerRoot = fullfile(projectRoot, 'controller');
 addpath(fullfile(projectRoot, 'src'));
 addpath(fullfile(optRoot, 'core'));
 addpath(fullfile(optRoot, 'ihsid'));
 addpath(fullfile(optRoot, 'validation'));
-addpath(fullfile(optRoot, 'integration'));
 addpath(fullfile(optRoot, 'tools'));
+addpath(fullfile(controllerRoot, 'simscape_tracking'));
 
 model = buildOptModelCustom();
 scene = buildCylinderBoxTransferScene(model);
@@ -34,7 +35,7 @@ scene.phase.numIntervalsApproach = 40;
 scene.phase.numIntervalsInsertion = 20;
 disc = buildTwoPhaseIHSDiscretization(scene, 40, 20);
 
-resultDir = fullfile(optRoot, 'results');
+resultDir = fullfile(projectRoot, 'results', 'trajectory_planning');
 if ~exist(resultDir, 'dir')
     mkdir(resultDir);
 end
