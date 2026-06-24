@@ -30,6 +30,9 @@ options.poseEstimatorMode = "ukf";
 options.sensorNoiseEnabled = true;
 options.sensorRandomSeed = 41;
 options.encoderNoiseStd = 5e-4;
+options.relativeLengthBias = zeros(6, 1);
+options.relativeLengthDriftRate = zeros(6, 1);
+options.encoderScaleError = zeros(6, 1);
 options.orientationResolution = deg2rad(0.0055);
 options.orientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.ukfOrientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
@@ -42,6 +45,7 @@ options.homeCalibrationApplied = true;
 options.orientationCalibrationResidual = zeros(3, 1);
 options.accelerometerCalibrationResidual = 9.80665 * [15; -15; 35] * 1e-6;
 options.gyroCalibrationResidual = deg2rad([8; -8; 8] / 3600);
+options.ukfVariant = "pose_bias_ukf";
 options.ukfEncoderNoiseScale = 0.2;
 options.ukfAccelerationNoiseStd = 0.02;
 options.ukfAngularVelocityNoiseStd = deg2rad(0.07);
@@ -149,6 +153,7 @@ if strcmp(mode, 'identified')
     rng(options.sensorRandomSeed);
     if strcmp(options.poseEstimatorMode, "ukf")
         ukfOverrides = struct( ...
+            'variant', options.ukfVariant, ...
             'encoderNoiseStd', options.ukfEncoderNoiseScale * options.encoderNoiseStd, ...
             'orientationNoiseStd', options.ukfOrientationNoiseStd, ...
             'accelerationNoiseStd', options.ukfAccelerationNoiseStd, ...
@@ -190,6 +195,9 @@ for sampleIndex = 1:sampleCount
         estimatedForce = feedbackForce;
     else
         encoderLength = sgpIK(qTrue, model).L - anchorLength;
+        encoderLength = (1 + options.encoderScaleError(:)) .* encoderLength + ...
+            options.relativeLengthBias(:) + ...
+            options.relativeLengthDriftRate(:) * (reference.t(sampleIndex) - reference.t(1));
         orientationMeasurement = qTrue(4:6);
         worldAcceleration = previousTrueAcceleration(1:3);
         specificForce = rpy2rotmZYX(qTrue(4:6)).' * ...
@@ -367,7 +375,7 @@ for sampleIndex = 1:sampleCount
     worldAcceleration = zeros(3, 1);
     specificForce = rpy2rotmZYX(anchorPose(4:6)).' * (-model.g);
     angularVelocity = zeros(3, 1);
-    relativeLength = zeros(6, 1);
+    relativeLength = options.relativeLengthBias(:);
     if options.sensorNoiseEnabled
         relativeLength = relativeLength + options.encoderNoiseStd * randn(6, 1);
         orientation = orientation + options.orientationCalibrationResidual + ...

@@ -17,6 +17,7 @@ predictedPose = zeros(6, sampleCount);
 predictedVelocity = zeros(6, sampleCount);
 accelerometerBias = zeros(3, sampleCount);
 gyroBias = zeros(3, sampleCount);
+legLengthBias = zeros(6, sampleCount);
 
 for sampleIndex = 1:sampleCount
     sample = struct();
@@ -39,6 +40,9 @@ for sampleIndex = 1:sampleCount
     velocity(:, sampleIndex) = output.velocity;
     accelerometerBias(:, sampleIndex) = output.accelerometerBias;
     gyroBias(:, sampleIndex) = output.gyroBias;
+    if isfield(output, 'legLengthBias')
+        legLengthBias(:, sampleIndex) = output.legLengthBias;
+    end
 end
 
 estimate = struct();
@@ -46,6 +50,7 @@ estimate.predictedPose = predictedPose;
 estimate.predictedVelocity = predictedVelocity;
 estimate.pose = pose;
 estimate.velocity = velocity;
+estimate.legLengthBias = legLengthBias;
 estimate.accelerometerBias = accelerometerBias;
 estimate.gyroBias = gyroBias;
 estimate.accelerationMode = accelerationMode;

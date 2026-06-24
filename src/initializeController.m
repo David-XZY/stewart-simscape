@@ -7,7 +7,7 @@ function [controller] = initializeController(args)
 %    - args - Can have the following fields:
 
 arguments
-  args.type   char   {mustBeMember(args.type, {'open-loop', 'iff', 'dvf', 'hac-iff', 'hac-dvf', 'ref-track-L', 'ref-track-X', 'ref-track-hac-dvf', 'length-cascade', 'pose-length-cascade'})} = 'open-loop'
+  args.type   char   {mustBeMember(args.type, {'open-loop', 'iff', 'dvf', 'hac-iff', 'hac-dvf', 'ref-track-L', 'ref-track-X', 'ref-track-hac-dvf', 'length-cascade', 'pose-length-cascade', 'computed-torque-force'})} = 'open-loop'
 end
 
 controller = struct();
@@ -33,4 +33,6 @@ switch args.type
     controller.type = 8;
   case 'pose-length-cascade'
     controller.type = 9;
+  case 'computed-torque-force'
+    controller.type = 10;
 end

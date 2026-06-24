@@ -13,6 +13,11 @@ end
 [forceTime, controlForce] = readTimeseries(simout.u);
 [feedbackForceTime, feedbackForce] = readTimeseries(simout.uFeedback);
 [feedforwardForceTime, feedforwardForce] = readTimeseries(simout.uFF);
+actualForce = nan(size(controlForce));
+actualForceTime = forceTime;
+if isfield(simout.y, 'Taum')
+    [actualForceTime, actualForce] = readTimeseries(simout.y.Taum);
+end
 
 referenceRelativeLength = interp1(refs.t(:), (refs.L - refs.L(:, 1)).', time, 'linear');
 referenceRelativePose = interp1(refs.t(:), (refs.q - refs.q0).', poseTime, 'linear');
@@ -34,15 +39,26 @@ lengthPassed = all(actualAbsoluteLength >= model.lmin.' - 1e-8, 'all') && ...
 forcePassed = all(controlForce >= model.actuator.forceMin.' - 1e-6, 'all') && ...
     all(controlForce <= model.actuator.forceMax.' + 1e-6, 'all');
 speedPassed = all(abs(legSpeed) <= config.speedLimit.' + 1e-4, 'all');
-accelerationPassed = all(abs(legAcceleration) <= config.accelerationLimit.' + 1e-2, 'all');
+accelerationLimit = config.accelerationLimit(:).';
+lengthTrackingThreshold = 5e-3;
+translationTrackingThreshold = 10e-3;
+rotationTrackingThreshold = deg2rad(1);
+if isfield(config, 'actuatorMode') && config.actuatorMode == "nonideal-force"
+    accelerationLimit = config.nonidealAccelerationLimit(:).';
+    lengthTrackingThreshold = config.nonidealMaxLengthTrackingPeak;
+    translationTrackingThreshold = config.nonidealMaxTranslationPeak;
+    rotationTrackingThreshold = config.nonidealMaxRotationPeak;
+end
+accelerationPassed = all(abs(legAcceleration) <= accelerationLimit + 1e-2, 'all');
 
 lengthPeak = max(abs(lengthError), [], 1);
 posePeak = max(abs(poseError), [], 1);
 maxLengthTrackingPeak = max(lengthPeak);
 maxTranslationPeak = max(posePeak(1:3));
 maxRotationPeak = max(posePeak(4:6));
-trackingPassed = maxLengthTrackingPeak <= 5e-3 && ...
-    maxTranslationPeak <= 10e-3 && maxRotationPeak <= deg2rad(1);
+trackingPassed = maxLengthTrackingPeak <= lengthTrackingThreshold && ...
+    maxTranslationPeak <= translationTrackingThreshold && ...
+    maxRotationPeak <= rotationTrackingThreshold;
 
 report = struct();
 report.time = time;
@@ -50,6 +66,7 @@ report.poseTime = poseTime;
 report.forceTime = forceTime;
 report.feedbackForceTime = feedbackForceTime;
 report.feedforwardForceTime = feedforwardForceTime;
+report.actualForceTime = actualForceTime;
 report.actualRelativeLength = actualRelativeLength;
 report.referenceRelativeLength = referenceRelativeLength;
 report.actualAbsoluteLength = actualAbsoluteLength;
@@ -61,6 +78,7 @@ report.equivalentPoseError = equivalentPoseError;
 report.controlForce = controlForce;
 report.feedbackForce = feedbackForce;
 report.feedforwardForce = feedforwardForce;
+report.actualForce = actualForce;
 report.derivativeTime = regularTime;
 report.legSpeed = legSpeed;
 report.legAcceleration = legAcceleration;
@@ -77,6 +95,9 @@ report.metrics = struct( ...
     'maxAbsControlForce', max(abs(controlForce), [], 'all'), ...
     'maxAbsFeedbackForce', max(abs(feedbackForce), [], 'all'), ...
     'maxAbsFeedforwardForce', max(abs(feedforwardForce), [], 'all'), ...
+    'maxAbsActualForce', max(abs(actualForce), [], 'all'), ...
+    'targetActualForceRms', sqrt(mean((controlForce - actualForce).^2, 'all', 'omitnan')), ...
+    'targetActualForcePeak', max(abs(controlForce - actualForce), [], 'all'), ...
     'minAbsoluteLength', min(actualAbsoluteLength, [], 'all'), ...
     'maxAbsoluteLength', max(actualAbsoluteLength, [], 'all'), ...
     'maxAbsLegSpeed', max(abs(legSpeed), [], 'all'), ...
@@ -91,9 +112,10 @@ report.acceptance = struct( ...
     'accelerationPassed', accelerationPassed, ...
     'trackingPassed', trackingPassed);
 report.thresholds = struct( ...
-    'maxLengthTrackingPeak', 5e-3, ...
-    'maxTranslationPeak', 10e-3, ...
-    'maxRotationPeak', deg2rad(1));
+    'maxLengthTrackingPeak', lengthTrackingThreshold, ...
+    'maxTranslationPeak', translationTrackingThreshold, ...
+    'maxRotationPeak', rotationTrackingThreshold, ...
+    'maxAbsLegAcceleration', max(accelerationLimit));
 report.passed = finitePassed && design.stable && lengthPassed && forcePassed && ...
     speedPassed && accelerationPassed && trackingPassed;
 end

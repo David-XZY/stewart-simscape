@@ -55,5 +55,6 @@ references.r = timeseries((poseReference.q - refs.q(:, 1)).', poseReference.t(:)
 references.rL = timeseries((Lref - Lref(:, 1)).', poseReference.t(:));
 references.rLd = timeseries(Ldref.', poseReference.t(:));
 references.rJq = timeseries(referenceJacobian, poseReference.t(:));
+references.uCT = timeseries(zeros(denseCount, 6), poseReference.t(:));
 references.description = '由节点 q/qd 经三次 Hermite 重建的纯长度串级控制参考轨迹';
 end

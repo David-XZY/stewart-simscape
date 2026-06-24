@@ -10,6 +10,9 @@ options = struct();
 options.randomSeed = 41;
 options.encoderResolution = 1 / 16500;
 options.encoderNoiseStd = 1e-3;
+options.relativeLengthBias = zeros(6, 1);
+options.relativeLengthDriftRate = zeros(6, 1);
+options.encoderScaleError = zeros(6, 1);
 options.orientationResolution = deg2rad(0.0055);
 options.orientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.orientationBias = deg2rad([0.1; -0.1; 0.5]);
@@ -52,6 +55,8 @@ for sampleIndex = 1:sampleCount
         rotation.' * (translationAcceleration(:, sampleIndex) - model.g);
 end
 
+relativeLength = (1 + options.encoderScaleError(:)) .* relativeLength + ...
+    options.relativeLengthBias(:) + options.relativeLengthDriftRate(:) .* (time - time(1));
 relativeLength = relativeLength + options.encoderNoiseStd * randn(size(relativeLength));
 relativeLength = round(relativeLength / options.encoderResolution) * options.encoderResolution;
 orientationBias = options.orientationBias;

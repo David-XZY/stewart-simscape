@@ -56,6 +56,7 @@ scene = buildCylinderBoxTransferScene(model);
 simscapeData = buildSimscapeLengthControlData(model, scene);
 [~, references] = exportTrajectoryToSimscape(trajectoryFromRefs(refs), scene, []);
 references.rLd = timeseries(zeros(numel(refs.t), 6), refs.t(:));
+references.uCT = timeseries(zeros(numel(refs.t), 6), refs.t(:));
 if ~useForceFeedforward
     references.uFF = timeseries(zeros(size(references.uFF.Data)), references.uFF.Time);
 end

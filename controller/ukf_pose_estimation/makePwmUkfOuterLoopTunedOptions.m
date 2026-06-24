@@ -7,6 +7,7 @@ options.orientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.accelerationNoiseStd = 9.80665e-3;
 options.angularVelocityNoiseStd = deg2rad(0.07);
 options.ukfEncoderNoiseScale = 0.2;
+options.ukfVariant = "pose_bias_ukf";
 options.ukfOrientationNoiseStd = deg2rad([0.1; 0.1; 0.5]);
 options.ukfAccelerationNoiseStd = 0.02;
 options.ukfAngularVelocityNoiseStd = deg2rad(0.07);

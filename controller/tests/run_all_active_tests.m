@@ -39,6 +39,8 @@ testFiles = {
     'test_37_pwm_feedback_source_export_contract'
     'test_38_pwm_ukf_outer_loop_tuning_contract'
     'test_39_four_control_group_meeting_export_contract'
+    'test_40_nonideal_force_actuator_contract'
+    'test_41_lqi_pose_force_design_contract'
 };
 
 for index = 1:numel(testFiles)

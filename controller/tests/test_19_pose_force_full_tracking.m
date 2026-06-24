@@ -27,6 +27,11 @@ assert(report.acceptance.speedPassed);
 assert(report.acceptance.accelerationPassed);
 assert(report.acceptance.trackingPassed);
 assert(report.metrics.maxAbsControlForce <= setup.config.forceLimit + 1e-6);
+assert(report.metrics.maxAbsActualForce <= setup.config.forceLimit + 250);
+assert(isfinite(report.metrics.targetActualForceRms));
+assert(isfinite(report.metrics.targetActualForcePeak));
+assert(report.metrics.targetActualForcePeak <= 2500);
+assert(report.thresholds.maxLengthTrackingPeak == setup.config.nonidealMaxLengthTrackingPeak);
 end
 
 function closePreparedModel(modelName)

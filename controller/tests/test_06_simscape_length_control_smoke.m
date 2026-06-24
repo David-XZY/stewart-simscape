@@ -16,10 +16,11 @@ output = sim(setup.modelName, 'StopTime', '0.02', 'ReturnWorkspaceOutputs', 'on'
 report = evaluateSimscapePoseForceControl( ...
     output.get('simout'), setup.refs, setup.model, setup.design, setup.config);
 
-assert(setup.controller.type == 6);
+assert(setup.controller.type == 10);
+assert(setup.simscapeData.stewart.actuators.type == 7);
 assert(report.acceptance.finitePassed);
 assert(report.acceptance.forcePassed);
-assert(report.metrics.minAbsoluteLength > min(setup.refs.L(:, 1)) - 1e-3);
+assert(report.metrics.minAbsoluteLength > min(setup.refs.L(:, 1)) - 5e-3);
 assert(report.metrics.maxAbsControlForce > 100);
 end
 

@@ -39,9 +39,30 @@ nodeRefs = validateReferences(sample.refs);
 model = buildOptModelCustom();
 scene = buildCylinderBoxTransferScene(model);
 config = makeSimscapePoseForceConfig(model, configOverrides);
-refs = reconstructPoseForceReferences(nodeRefs, model, config.derivativeSampleTime);
-simscapeData = buildSimscapeLengthControlData(model, scene);
+refs = reconstructPoseForceReferences(nodeRefs, model, config.derivativeSampleTime, config);
+controlMode = 'force';
+if config.actuatorMode == "nonideal-force"
+    controlMode = 'nonideal-force';
+end
+simscapeData = buildSimscapeLengthControlData(model, scene, controlMode);
+if config.actuatorMode == "nonideal-force"
+    nonidealForceActuator = makeNonidealForceActuator(model, config);
+    if config.controlLaw == "computed-torque"
+        nonidealForceActuator.initialForce = refs.Fcomputed(:, 1);
+    else
+        nonidealForceActuator.initialForce = refs.Fleg(:, 1);
+    end
+    simscapeData.stewart.nonidealForceActuator = nonidealForceActuator;
+    simscapeData.nonidealForceActuator = nonidealForceActuator;
+end
 [~, references] = exportTrajectoryToSimscape(trajectoryFromRefs(refs), scene, []);
+references.rd = timeseries(refs.qd.', refs.t(:));
+references.rdd = timeseries(refs.qdd.', refs.t(:));
+references.uCT = timeseries(refs.Fcomputed.', refs.t(:));
+references.uIHSID = references.uFF;
+if config.controlLaw == "computed-torque"
+    references.uFF = references.uCT;
+end
 references.rLd = timeseries(refs.Ld.', refs.t(:));
 references.description = '由节点 q/qd 经三次 Hermite 重建的力输入位姿跟踪参考轨迹';
 
@@ -52,16 +73,30 @@ assignin('base', 'disturbances', simscapeData.disturbances);
 assignin('base', 'references', references);
 assignin('base', 'controller', initializeController('type', 'open-loop'));
 assignin('base', 'K', ss(zeros(6)));
+assignin('base', 'computedTorqueConfig', config);
+assignin('base', 'computedTorqueModel', model);
 
 modelName = 'stewart_platform_model';
 modelFile = fullfile(projectRoot, 'matlab', [modelName, '.slx']);
 load_system(modelFile);
-configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', false);
-referenceCleanup = zeroForceFeedforward(); %#ok<NASGU>
-design = designSimscapePoseForceController(modelName, model, config);
-clear referenceCleanup;
+if config.controlLaw == "linear-pose-force"
+    configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', false);
+    referenceCleanup = zeroForceFeedforward(); %#ok<NASGU>
+    design = designSimscapePoseForceController(modelName, model, config);
+    clear referenceCleanup;
+else
+    configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', false);
+    referenceCleanup = zeroForceFeedforward(); %#ok<NASGU>
+    design = designSimscapePoseForceController(modelName, model, config);
+    design.controlLaw = config.controlLaw;
+    clear referenceCleanup;
+end
 
-controller = initializeController('type', 'ref-track-X');
+if config.controlLaw == "computed-torque"
+    controller = initializeController('type', 'computed-torque-force');
+else
+    controller = initializeController('type', 'ref-track-X');
+end
 assignin('base', 'K', design.K);
 assignin('base', 'controller', controller);
 configureSimscapeGravity(modelName, simscapeData.gravity, 'enabled', config.gravityEnabled);
@@ -125,7 +160,7 @@ traj = struct('t', refs.t, 'Q', refs.q, 'V', refs.qd, ...
     'Unode', refs.Fleg, 'L', refs.L);
 end
 
-function refs = reconstructPoseForceReferences(nodeRefs, model, sampleTime)
+function refs = reconstructPoseForceReferences(nodeRefs, model, sampleTime, config)
 % reconstructPoseForceReferences - 重建位姿参考并在同一网格计算腿长、腿速与前馈力
 poseReference = reconstructHermitePoseReference( ...
     nodeRefs.t, nodeRefs.q, nodeRefs.qd, sampleTime);
@@ -133,6 +168,7 @@ refs = nodeRefs;
 refs.t = poseReference.t;
 refs.q = poseReference.q;
 refs.qd = poseReference.qd;
+refs.qdd = poseReference.qdd;
 refs.nodeTime = poseReference.nodeTime;
 refs.referenceInterpolation = poseReference.interpolation;
 refs.Fleg = interp1(nodeRefs.t(:), nodeRefs.Fleg.', refs.t(:), 'linear').';
@@ -140,11 +176,15 @@ refs.Fleg = interp1(nodeRefs.t(:), nodeRefs.Fleg.', refs.t(:), 'linear').';
 sampleCount = numel(refs.t);
 refs.L = zeros(6, sampleCount);
 refs.Ld = zeros(6, sampleCount);
+refs.Fcomputed = zeros(6, sampleCount);
 for sampleIndex = 1:sampleCount
     kin = sgpIK(refs.q(:, sampleIndex), model);
     jacobian = sgpJacobian(refs.q(:, sampleIndex), model);
     refs.L(:, sampleIndex) = kin.L;
     refs.Ld(:, sampleIndex) = jacobian.Jq * refs.qd(:, sampleIndex);
+    refs.Fcomputed(:, sampleIndex) = computeComputedTorqueForce( ...
+        refs.q(:, sampleIndex), refs.qd(:, sampleIndex), refs.qdd(:, sampleIndex), ...
+        refs.q(:, sampleIndex), refs.qd(:, sampleIndex), model, config);
 end
 end
 

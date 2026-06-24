@@ -19,11 +19,18 @@ assert(setup.design.bandwidthHz == 15);
 assert(setup.design.gainScale == 0.45);
 assert(setup.design.rotationGainScale == 1.4);
 assert(setup.config.gravityEnabled);
-assert(setup.controller.type == 6);
+assert(setup.config.controlLaw == "computed-torque");
+assert(setup.config.actuatorMode == "nonideal-force");
+assert(setup.controller.type == 10);
+assert(setup.simscapeData.stewart.actuators.type == 7);
 assert(strcmp(setup.trajectoryFile, sampleFile));
 assert(bdIsLoaded(setup.modelName));
 assert(evalin('base', 'exist(''K'', ''var'') == 1'));
-assert(evalin('base', 'controller.type == 6'));
+assert(evalin('base', 'controller.type == 10'));
+
+legacySetup = prepareSimscapePoseForceControl(sampleFile, struct( ...
+    'controlLaw', "linear-pose-force", 'actuatorMode', "ideal-force"));
+assert(legacySetup.controller.type == 6);
 
 invalidFile = [tempname, '.mat'];
 invalidCleanup = onCleanup(@() deleteIfExists(invalidFile));

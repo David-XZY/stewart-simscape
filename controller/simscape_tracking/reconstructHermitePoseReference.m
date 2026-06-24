@@ -29,6 +29,7 @@ end
 
 pose = zeros(6, numel(time));
 velocity = zeros(6, numel(time));
+acceleration = zeros(6, numel(time));
 for intervalIndex = 1:nodeCount - 1
     if intervalIndex < nodeCount - 1
         denseIndex = find(time >= nodeTime(intervalIndex) & ...
@@ -57,12 +58,22 @@ for intervalIndex = 1:nodeCount - 1
         nodeVelocity(:, intervalIndex) * dh10 + ...
         nodePose(:, intervalIndex + 1) * dh01 + ...
         nodeVelocity(:, intervalIndex + 1) * dh11;
+
+    ddh00 = (12 * normalizedTime - 6) / intervalDuration^2;
+    ddh10 = (6 * normalizedTime - 4) / intervalDuration;
+    ddh01 = (-12 * normalizedTime + 6) / intervalDuration^2;
+    ddh11 = (6 * normalizedTime - 2) / intervalDuration;
+    acceleration(:, denseIndex) = nodePose(:, intervalIndex) * ddh00 + ...
+        nodeVelocity(:, intervalIndex) * ddh10 + ...
+        nodePose(:, intervalIndex + 1) * ddh01 + ...
+        nodeVelocity(:, intervalIndex + 1) * ddh11;
 end
 
 reference = struct();
 reference.t = time;
 reference.q = pose;
 reference.qd = velocity;
+reference.qdd = acceleration;
 reference.nodeTime = nodeTime;
 reference.sampleTime = sampleTime;
 reference.interpolation = 'cubic-hermite';

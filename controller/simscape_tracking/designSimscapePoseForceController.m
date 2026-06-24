@@ -19,31 +19,30 @@ end
 jacobian = sgpJacobian(model.qHome, model).Jv;
 forceMapping = jacobian.' \ eye(6);
 cartesianPlant = minreal(plant * forceMapping);
-cartesianControllers = cell(1, 6);
-for axisIndex = 1:6
-    cartesianControllers{axisIndex} = pidtune( ...
-        cartesianPlant(axisIndex, axisIndex), 'PIDF', 2 * pi * config.bandwidthHz);
-end
-
-axisScale = config.gainScale * ones(6, 1);
-axisScale(4:6) = axisScale(4:6) * config.rotationGainScale;
-Kx = ss(diag(axisScale)) * ss(blkdiag(cartesianControllers{:}));
-K = ss(forceMapping) * Kx;
-closedLoop = feedback(plant * K, eye(6));
-closedLoopPoles = pole(closedLoop);
-stable = all(real(closedLoopPoles) < -1e-7);
+feedbackLaw = string(config.feedbackLaw);
+lqiDesign = designLqiPoseForceController(cartesianPlant, model.Lc, config);
+Kx = lqiDesign.Kx;
+antiWindupInputMap = blkdiag(eye(6), jacobian.');
+K = ss(forceMapping) * Kx * ss(antiWindupInputMap);
+closedLoop = [];
+closedLoopPoles = lqiDesign.closedLoopPoles;
+stable = lqiDesign.stable;
 
 design = struct();
+design.feedbackLaw = feedbackLaw;
 design.bandwidthHz = config.bandwidthHz;
 design.gainScale = config.gainScale;
 design.rotationGainScale = config.rotationGainScale;
 design.plant = plant;
 design.jacobian = jacobian;
 design.forceMapping = forceMapping;
+design.antiWindupInputMap = antiWindupInputMap;
 design.cartesianPlant = cartesianPlant;
-design.cartesianControllers = cartesianControllers;
 design.Kx = Kx;
 design.K = K;
+design.lqi = lqiDesign;
+design.integratorCount = lqiDesign.integratorCount;
+design.feedbackInputCount = lqiDesign.feedbackInputCount;
 design.closedLoop = closedLoop;
 design.closedLoopPoles = closedLoopPoles;
 design.stable = stable;
