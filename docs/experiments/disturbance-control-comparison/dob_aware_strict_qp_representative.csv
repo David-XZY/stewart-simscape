@@ -1,0 +1,5 @@
+case_id,rms_before,rms_after,accel_before,accel_after,collision_before,collision_after,infeasible_before,infeasible_after,fallback_before,fallback_after,p95_before_s,p95_after_s
+nominal,0.00076340460891849,0.000763477803176598,0,0,5,0,0,0,0,0,0.0080347,0.0098764
+target_noise_x1p0_s101,0.000927324322425247,0.000922243985165872,2,0,0,0,1,1,1,1,0.00661995,0.0119567
+wrench_smooth_target_x0p5,0.000774513777647554,0.000774188235105224,0,0,3,0,1,0,1,0,0.0074708,0.0114955
+wrench_target_noise_x1p5_s102,0.0182407210960051,0.000990569831298257,5,0,11,3,2,0,2,0,0.00927245,0.0132762

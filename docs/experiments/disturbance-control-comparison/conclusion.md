@@ -33,7 +33,7 @@ No controller met every 'better than existing control' gate in Simscape. The ran
 - `scheduled_lqi_dob` is the tracking winner, but it is not an accepted controller: high-intensity target noise causes leg-acceleration violations, some cases exceed the force-rate boundary, and the physical collision margin remains negative.
 - `scheduled_lqi_dob_strict_qp` removes the force-rate issue and greatly reduces total tracking error, but it still has acceleration/collision violations, QP infeasible/fallback events, and a worst-case P95 above 10 ms.
 - The current `strict_qp` is not robust to pose-command noise in this matrix; fallback-heavy cases dominate its aggregate error. It should not be described as a tracking improvement over fixed LQI.
-- Next optimization should be constrained, not score-only: add a target-command prefilter/command governor with feedforward-consistent derivatives, explicitly include DOB compensation in acceleration CBF feasibility, and reduce QP execution cost before retuning tracking weights.
+- The DOB-aware strict path has now been implemented and separately validated on four representative Simscape cases. The original 40-case table above remains the pre-change baseline; see `dob_aware_strict_qp_validation.md`. Remaining optimization should add a target-command prefilter/command governor with feedforward-consistent derivatives and reduce QP execution cost before retuning tracking weights.
 
 ## Appendix boundary
 
