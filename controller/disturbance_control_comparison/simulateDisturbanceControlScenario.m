@@ -220,7 +220,7 @@ legSpeed = zeros(6, sampleCount);
 legAcceleration = zeros(6, sampleCount);
 sigmaMin = zeros(1, sampleCount);
 collisionDistance = zeros(3, sampleCount);
-if numel(controlTime) == 1
+if isscalar(controlTime)
     appliedForce = repmat(commandForce(:, 1), 1, sampleCount);
 else
     controlDt = median(diff(controlTime));

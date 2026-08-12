@@ -1,0 +1,144 @@
+{
+  "controllerIds": [
+    "fixed_lqi",
+    "strict_qp",
+    "scheduled_lqi",
+    "fixed_lqi_dob",
+    "scheduled_lqi_dob",
+    "scheduled_lqi_dob_strict_qp"
+  ],
+  "baselineControllerIds": [
+    "fixed_lqi",
+    "strict_qp"
+  ],
+  "candidateControllerIds": [
+    "scheduled_lqi",
+    "fixed_lqi_dob",
+    "scheduled_lqi_dob",
+    "scheduled_lqi_dob_strict_qp"
+  ],
+  "disturbanceScales": [
+    0.5,
+    1,
+    1.5
+  ],
+  "basePlatformWrench": [
+    100,
+    -80,
+    60,
+    6,
+    -5,
+    4
+  ],
+  "baseAttitudeBumpDeg": [
+    0.5,
+    -0.4,
+    0.3
+  ],
+  "baseAttitudeNoiseStdDeg": [
+    0.05,
+    0.05,
+    0.08
+  ],
+  "noiseSeeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "sampleTime": 0.01,
+  "trajectoryFile": "D:\\NPU\\Matlab_code\\stewart-simscape-disturbance-experiment\\opt_minimal\\examples\\ihsid_40x20_limited_memory\\simscape_references.mat",
+  "outputDir": "D:\\NPU\\Matlab_code\\stewart-simscape-disturbance-experiment\\results\\reports\\disturbance_control_comparison",
+  "evidenceDir": "D:\\NPU\\Matlab_code\\stewart-simscape-disturbance-experiment\\docs\\experiments\\disturbance-control-comparison",
+  "wrenchWindow": [
+    2.5,
+    2.9
+  ],
+  "bumpWindow": [
+    4.5,
+    5.3
+  ],
+  "bumpRiseTime": 0.2,
+  "noiseWindow": [
+    1,
+    6.5
+  ],
+  "noiseCutoffHz": 2,
+  "dobCutoffHzGrid": [
+    2,
+    5,
+    8
+  ],
+  "dobForceLimitGrid": [
+    60,
+    120,
+    180
+  ],
+  "dobRateLimitGrid": [
+    1000,
+    2000,
+    4000
+  ],
+  "trainingScale": 1,
+  "trainingNoiseSeeds": [
+    101,
+    102,
+    103
+  ],
+  "holdoutNoiseSeeds": [
+    104,
+    105
+  ],
+  "integrationSubsteps": 1,
+  "screeningSkipCollision": true,
+  "useFastRestart": true,
+  "initialPoseOffset": [
+    0.0004,
+    -0.0003,
+    0.0002,
+    0.0002,
+    -0.00015,
+    0.0001
+  ],
+  "initialVelocityOffset": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "stateStep": [
+    1E-6,
+    1E-6,
+    1E-6,
+    1E-6,
+    1E-6,
+    1E-6,
+    1E-5,
+    1E-5,
+    1E-5,
+    1E-5,
+    1E-5,
+    1E-5
+  ],
+  "inputStep": 1,
+  "hardConstraintTolerance": 1E-7,
+  "stateConstraintTolerance": 2E-6,
+  "recoveryBand": 1.1,
+  "recoveryHoldTime": 0.2,
+  "minimumImprovement": 0.15,
+  "maximumCombinedRegression": 0.1,
+  "onlineP95Limit": 0.01,
+  "strictOverrides": {},
+  "baselineOverrides": {},
+  "writeArtifacts": true,
+  "exportFigures": true,
+  "runExactScreening": true,
+  "runFullExactMatrix": true,
+  "runSimscapeFinalists": true,
+  "caseIds": [],
+  "simscapeCaseIds": [],
+  "failOnRejected": false
+}
