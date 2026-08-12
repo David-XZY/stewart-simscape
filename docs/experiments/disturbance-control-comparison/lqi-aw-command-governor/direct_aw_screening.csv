@@ -1,0 +1,5 @@
+controller,weighted_error_ratio,fallback_count,acceleration_violation_cases,collision_violation_cases,maximum_p95_ms,aw_gain,aw_limit_n,governor_hz
+scheduled_lqi_dob_strict_qp,1,2,0,2,10.9472,0,0,0
+scheduled_lqi_dob_strict_qp_aw,0.981258,7,3,4,12.2766,1,30,0
+scheduled_lqi_dob_strict_qp_governor,1.19850,2,0,0,12.1502,0,0,2
+scheduled_lqi_dob_strict_qp_aw_governor,1.19679,4,0,4,12.4698,1,30,2

@@ -1,0 +1,10 @@
+controller,case_id,equivalent_pose_rms,equivalent_pose_peak,acceleration_violation_count,collision_violation_count,infeasible_count,fallback_count,controller_p95_ms,aw_gain,aw_limit_n,governor_hz
+scheduled_lqi_dob_strict_qp,target_noise_x1p0_s101,0.000922243985165872,0.00197718253043143,0,0,1,1,11.9496,0,0,0
+scheduled_lqi_dob_strict_qp_governor,target_noise_x1p0_s101,0.00103210618308678,0.00247118097043437,0,0,1,1,15.31935,0,0,2
+scheduled_lqi_dob_strict_qp_aw_governor,target_noise_x1p0_s101,0.00103190635992292,0.00247101374179451,0,0,0,0,12.02335,0.1,30,2
+scheduled_lqi_dob_strict_qp,target_noise_x1p5_s102,0.000950367315670519,0.00194968742394176,0,5,1,1,8.4839,0,0,0
+scheduled_lqi_dob_strict_qp_governor,target_noise_x1p5_s102,0.00130582234928013,0.00284520189221145,0,0,1,1,9.88515,0,0,2
+scheduled_lqi_dob_strict_qp_aw_governor,target_noise_x1p5_s102,0.00130552072428365,0.00284510298019632,0,0,1,1,10.2013,0.1,30,2
+scheduled_lqi_dob_strict_qp,wrench_target_noise_x1p5_s102,0.000990569831298257,0.00279960081089656,0,3,0,0,9.63915,0,0,0
+scheduled_lqi_dob_strict_qp_governor,wrench_target_noise_x1p5_s102,0.0013176654002446,0.00284520189221145,0,0,0,0,9.8533,0,0,2
+scheduled_lqi_dob_strict_qp_aw_governor,wrench_target_noise_x1p5_s102,0.00131751522601843,0.00284510298019632,0,0,0,0,11.30935,0.1,30,2
