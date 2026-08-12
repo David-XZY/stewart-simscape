@@ -69,6 +69,7 @@ testFiles = {
     'test_84_disturbance_schedule_index_contract'
     'test_85_zero_disturbance_regression'
     'test_86_strict_filter_tightening_contract'
+    'test_87_dob_aware_strict_qp_contract'
 };
 
 for index = 1:numel(testFiles)

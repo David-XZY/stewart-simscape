@@ -78,13 +78,15 @@ for sampleIndex = 1:sampleCount
             controller.dobConfig, dobState);
         estimatedWrench(:, sampleIndex) = dobDiagnostic.wrenchEstimate;
     end
-    nominal = reference.computedForce(:, sampleIndex)+feedback+compensation;
+    regulatedNominal = reference.computedForce(:, sampleIndex)+feedback;
+    nominal = regulatedNominal+compensation;
     if controller.useStrictQp
         strict.time = time(sampleIndex);
         [command, qpDiagnostic] = stepStrictClfCbfQp( ...
             q, qd, reference.q(:, sampleIndex), reference.qd(:, sampleIndex), ...
-            reference.qdd(:, sampleIndex), nominal, previousCommand, ...
-            nominalModel, controller.filterScene, strict);
+            reference.qdd(:, sampleIndex), regulatedNominal, previousCommand, ...
+            nominalModel, controller.filterScene, strict, compensation, ...
+            estimatedWrench(:, sampleIndex));
         qpSolveTime(sampleIndex) = qpDiagnostic.solveTime;
         qpFeasible(sampleIndex) = qpDiagnostic.feasible;
         qpFallback(sampleIndex) = qpDiagnostic.usedFallback;

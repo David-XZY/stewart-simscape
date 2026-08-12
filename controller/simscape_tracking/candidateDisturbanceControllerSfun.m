@@ -117,7 +117,8 @@ if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
         block.Dwork(6).Data = dobState.legCompensation;
         block.Dwork(8).Data = double(dobState.initialized);
     end
-    nominal = feedforward+feedback+dobCompensation;
+    regulatedNominal = feedforward+feedback;
+    nominal = regulatedNominal+dobCompensation;
     qpSolve = nan;
     feasible = true;
     fallback = false;
@@ -127,7 +128,8 @@ if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
         strict.time = currentTime;
         try
             [command, qp] = stepStrictClfCbfQp(q, qd, qRef, qdRef, qddRef, ...
-                nominal, block.Dwork(1).Data, runtime.model, runtime.scene, strict);
+                regulatedNominal, block.Dwork(1).Data, runtime.model, ...
+                runtime.scene, strict, dobCompensation, dobEstimate);
             qpSolve = qp.solveTime;
             feasible = qp.feasible;
             fallback = qp.usedFallback;
