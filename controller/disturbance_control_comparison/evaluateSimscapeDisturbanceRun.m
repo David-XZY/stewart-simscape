@@ -55,8 +55,17 @@ for index = 1:sampleCount
     distance = evaluateCylinderBoxDistanceNumeric(q, scene);
     collisionDistance(index, :) = distance.distances;
 end
-threshold = [scene.collision.finalGap, scene.collision.safeDistance, ...
-    scene.collision.safeDistance];
+threshold = repmat([scene.collision.finalGap, scene.collision.safeDistance, ...
+    scene.collision.safeDistance], sampleCount, 1);
+physicalStrictConfig = strictConfig;
+physicalStrictConfig.collision.roofStage1Distance = ...
+    scene.collision.stage1ConstraintDistance;
+physicalStrictConfig.collision.roofFinalDistance = scene.collision.finalGap;
+physicalStrictConfig.collision.sideDistance = scene.collision.safeDistance;
+for index = 1:sampleCount
+    roof = evaluateStrictRoofThreshold(poseTime(index), scene, physicalStrictConfig);
+    threshold(index, 1) = roof.value;
+end
 collisionMargin = collisionDistance-threshold;
 
 force = baseline.controlForce;
@@ -124,7 +133,7 @@ metrics.eligible = metrics.hardConstraintsPassed && metrics.fullTrajectoryComple
     metrics.nonfiniteCount == 0 && metrics.controllerTimeP95 <= config.onlineP95Limit;
 
 run = struct();
-run.controller = rmfield(controller, {'schedule', 'dobConfig'});
+run.controller = rmfield(controller, {'schedule', 'dobConfig', 'filterScene'});
 run.experimentCase = experimentCase;
 run.referencePolicy = reference.feedforwardPolicy;
 run.control = struct('time', poseTime.', 'poseError', poseError.', ...

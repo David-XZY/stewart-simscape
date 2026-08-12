@@ -128,7 +128,7 @@ if controller.id ~= "fixed_lqi" && controller.id ~= "strict_qp"
     assignin('base', 'references', references);
     runtime = struct();
     runtime.model = setup.model;
-    runtime.scene = setup.scene;
+    runtime.scene = controller.filterScene;
     runtime.strictConfig = strictConfig;
     runtime.schedule = controller.schedule;
     runtime.dobConfig = controller.dobConfig;
@@ -180,7 +180,7 @@ end
 function run = failedRun(controller, experimentCase, exception)
 metrics = emptyFailureMetrics();
 run = struct();
-run.controller = rmfield(controller, {'schedule', 'dobConfig'});
+run.controller = rmfield(controller, {'schedule', 'dobConfig', 'filterScene'});
 run.experimentCase = experimentCase;
 run.referencePolicy = "failed_before_evaluation";
 run.control = struct();

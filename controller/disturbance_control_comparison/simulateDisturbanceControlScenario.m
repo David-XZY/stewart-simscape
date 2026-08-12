@@ -84,7 +84,7 @@ for sampleIndex = 1:sampleCount
         [command, qpDiagnostic] = stepStrictClfCbfQp( ...
             q, qd, reference.q(:, sampleIndex), reference.qd(:, sampleIndex), ...
             reference.qdd(:, sampleIndex), nominal, previousCommand, ...
-            nominalModel, scene, strict);
+            nominalModel, controller.filterScene, strict);
         qpSolveTime(sampleIndex) = qpDiagnostic.solveTime;
         qpFeasible(sampleIndex) = qpDiagnostic.feasible;
         qpFallback(sampleIndex) = qpDiagnostic.usedFallback;
@@ -174,7 +174,7 @@ dense = buildTelemetry(denseTime, denseState, commandForce, time, ...
     nominalModel, scene, experimentCase, config);
 
 run = struct();
-run.controller = rmfield(controller, {'schedule', 'dobConfig'});
+run.controller = rmfield(controller, {'schedule', 'dobConfig', 'filterScene'});
 run.experimentCase = experimentCase;
 run.referencePolicy = reference.feedforwardPolicy;
 run.control = control;
@@ -275,8 +275,7 @@ accelerationMargin = model.actuator.lddotMax(:)-abs(run.dense.legAcceleration);
 forceMargin = [run.control.appliedForce-model.actuator.forceMin(:); ...
     model.actuator.forceMax(:)-run.control.appliedForce];
 forceRateMargin = strictConfig.forceRateLimit(:)-abs(commandRate);
-collisionThreshold = [scene.collision.finalGap; ...
-    scene.collision.safeDistance; scene.collision.safeDistance];
+collisionThreshold = buildCollisionThreshold(run.dense.time, scene, strictConfig);
 collisionMargin = run.dense.collisionDistance-collisionThreshold;
 validQp = run.diagnostics.qpSolveTime(isfinite(run.diagnostics.qpSolveTime));
 validStep = run.diagnostics.controllerStepTime(isfinite(run.diagnostics.controllerStepTime));
@@ -328,6 +327,18 @@ metrics.eligible = metrics.hardConstraintsPassed && ...
     metrics.fullTrajectoryCompleted && metrics.infeasibleCount == 0 && ...
     metrics.fallbackCount == 0 && metrics.nonfiniteCount == 0 && ...
     metrics.controllerTimeP95 <= config.onlineP95Limit;
+end
+
+function threshold = buildCollisionThreshold(time, scene, strictConfig)
+strictConfig.collision.roofStage1Distance = scene.collision.stage1ConstraintDistance;
+strictConfig.collision.roofFinalDistance = scene.collision.finalGap;
+strictConfig.collision.sideDistance = scene.collision.safeDistance;
+threshold = repmat([scene.collision.finalGap; scene.collision.safeDistance; ...
+    scene.collision.safeDistance], 1, numel(time));
+for index = 1:numel(time)
+    roof = evaluateStrictRoofThreshold(time(index), scene, strictConfig);
+    threshold(1, index) = roof.value;
+end
 end
 
 function recovery = calculateRecoveryTime(time, equivalent, experimentCase, config)
