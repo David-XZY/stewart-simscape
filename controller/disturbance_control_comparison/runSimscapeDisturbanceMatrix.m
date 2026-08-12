@@ -58,7 +58,12 @@ for controllerIndex = 1:numel(controllers)
                     key = matlab.lang.makeValidName(char("bump_"+ ...
                         replace(compose('%.1f', experimentCase.scale), '.', 'p')));
                     if ~isfield(scheduleCache, key)
-                        scheduleCache.(key) = buildReferenceScheduledLqi(reference, ...
+                        scheduleReference = reference;
+                        if controllerOption(controller, 'useCommandGovernor', false)
+                            scheduleReference.q = scheduleReference.q- ...
+                                scheduleReference.commandNoisePerturbation;
+                        end
+                        scheduleCache.(key) = buildReferenceScheduledLqi(scheduleReference, ...
                             setup.model, setup.config, 'mode', 'scheduled', ...
                             'stateStep', config.stateStep, 'inputStep', config.inputStep);
                     end
@@ -66,6 +71,9 @@ for controllerIndex = 1:numel(controllers)
                 else
                     runtime.schedule = controller.schedule;
                 end
+                runtime.governorBaseReference = struct( ...
+                    'q', reference.q-reference.commandNoisePerturbation, ...
+                    'qd', reference.qd, 'qdd', reference.qdd);
                 assignin('base', 'candidateControllerRuntime', runtime);
                 setup.candidateRuntime = runtime;
             end
@@ -134,6 +142,22 @@ if controller.id ~= "fixed_lqi" && controller.id ~= "strict_qp"
     runtime.dobConfig = controller.dobConfig;
     runtime.useDob = controller.useDob;
     runtime.useStrictQp = controller.useStrictQp;
+    runtime.useQpAwareAntiWindup = controllerOption( ...
+        controller, 'useQpAwareAntiWindup', false);
+    runtime.qpAwareAntiWindupMismatchLimit = controllerOption(controller, ...
+        'qpAwareAntiWindupMismatchLimit', config.qpAwareAntiWindupMismatchLimit);
+    runtime.qpAwareAntiWindupGain = controllerOption(controller, ...
+        'qpAwareAntiWindupGain', config.qpAwareAntiWindupGain);
+    runtime.useCommandGovernor = controllerOption( ...
+        controller, 'useCommandGovernor', false);
+    runtime.commandGovernorConfig = makeAttitudeCommandGovernorConfig( ...
+        config.sampleTime, config.commandGovernorCutoffHz, ...
+        config.commandGovernorDampingRatio, ...
+        config.commandGovernorMaxRateDegPerSec, ...
+        config.commandGovernorMaxAccelerationDegPerSec2);
+    runtime.governorBaseReference = struct('q', nominal.q, ...
+        'qd', nominal.qd, 'qdd', nominal.qdd);
+    runtime.poseConfig = setup.config;
     runtime.sampleTime = config.sampleTime;
     runtime.q0 = setup.refs.q0(:);
     runtime.initialQd = nominal.qd(:, 1);
@@ -214,5 +238,13 @@ function closeWithoutSaving(modelName)
 if bdIsLoaded(modelName)
     set_param(modelName, 'Dirty', 'off');
     close_system(modelName, 0);
+end
+end
+
+function value = controllerOption(controller, name, fallback)
+if isfield(controller, name)
+    value = controller.(name);
+else
+    value = fallback;
 end
 end

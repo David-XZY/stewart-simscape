@@ -33,11 +33,11 @@ function postPropagationSetup(block)
 runtime = block.DialogPrm(1).Data;
 controllerOrder = size(runtime.schedule.samples(1).controllerA, 1);
 widths = [6, 6, controllerOrder, 6, 6, 6, 6, 1, 1, 6, 6, 6, ...
-    runtime.diagnosticLayout.width];
+    runtime.diagnosticLayout.width, 3, 3];
 names = {'PreviousForce', 'ForceCommand', 'LqiState', 'AntiWindup', ...
     'DobWrench', 'DobCompensation', 'PreviousQd', 'DobInitialized', ...
     'LastTime', 'AbsolutePose', 'GeneralizedVelocity', 'NominalForce', ...
-    'Diagnostic'};
+    'Diagnostic', 'GovernorPerturbation', 'GovernorRate'};
 block.NumDworks = numel(widths);
 for index = 1:numel(widths)
     block.Dwork(index).Name = names{index};
@@ -67,6 +67,8 @@ diagnostic = nan(runtime.diagnosticLayout.width, 1);
 diagnostic(runtime.diagnosticLayout.feasible) = 1;
 diagnostic(runtime.diagnosticLayout.usedFallback) = 0;
 block.Dwork(13).Data = diagnostic;
+block.Dwork(14).Data = zeros(3, 1);
+block.Dwork(15).Data = zeros(3, 1);
 end
 
 function outputs(block)
@@ -77,10 +79,10 @@ tolerance = max(1e-12, 32*eps(max(1, abs(currentTime))));
 if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
     relativePose = reshape(block.InputPort(1).Data, 6, 1);
     spatialVelocity = reshape(block.InputPort(2).Data, 6, 1);
-    qRef = reshape(block.InputPort(3).Data, 6, 1);
-    qdRef = reshape(block.InputPort(4).Data, 6, 1);
-    qddRef = reshape(block.InputPort(5).Data, 6, 1);
-    feedforward = reshape(block.InputPort(6).Data, 6, 1);
+    qRefRaw = reshape(block.InputPort(3).Data, 6, 1);
+    qdRefRaw = reshape(block.InputPort(4).Data, 6, 1);
+    qddRefRaw = reshape(block.InputPort(5).Data, 6, 1);
+    feedforwardRaw = reshape(block.InputPort(6).Data, 6, 1);
     q = runtime.q0(:)+relativePose;
     rateMap = rpyRateMapZYX(q(4:6));
     if rcond(rateMap) < runtime.rpyRateRcondMin
@@ -92,10 +94,35 @@ if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
     timer = tic;
     sampleIndex = min(runtime.schedule.sampleCount, ...
         max(1, round((currentTime-runtime.schedule.time(1))/runtime.sampleTime)+1));
+    qRef = qRefRaw;
+    qdRef = qdRefRaw;
+    qddRef = qddRefRaw;
+    feedforward = feedforwardRaw;
+    governed = struct('perturbation', zeros(3, 1), ...
+        'rate', zeros(3, 1), 'acceleration', zeros(3, 1));
+    if runtime.useCommandGovernor
+        baseQ = runtime.governorBaseReference.q(:, sampleIndex);
+        rawNoise = qRefRaw(4:6)-baseQ(4:6);
+        governorState = struct('perturbation', block.Dwork(14).Data, ...
+            'rate', block.Dwork(15).Data);
+        [governed, governorState] = stepAttitudeCommandGovernor( ...
+            rawNoise, governorState, runtime.commandGovernorConfig);
+        qRef = baseQ;
+        qRef(4:6) = qRef(4:6)+governed.perturbation;
+        qdRef = runtime.governorBaseReference.qd(:, sampleIndex);
+        qdRef(4:6) = qdRef(4:6)+governed.rate;
+        qddRef = runtime.governorBaseReference.qdd(:, sampleIndex);
+        qddRef(4:6) = qddRef(4:6)+governed.acceleration;
+        feedforward = computeComputedTorqueForce(qRef, qdRef, qddRef, ...
+            q, qd, runtime.model, runtime.poseConfig);
+        block.Dwork(14).Data = governorState.perturbation;
+        block.Dwork(15).Data = governorState.rate;
+    end
     item = runtime.schedule.samples(runtime.schedule.referenceIndex(sampleIndex));
     lqiState = block.Dwork(3).Data;
     antiWindup = block.Dwork(4).Data;
-    [nextLqi, nextAntiWindup, ~, feedback] = stepDiscreteLqiController( ...
+    [nextLqi, nextAntiWindup, rawFeedback, feedback] = ...
+        stepDiscreteLqiController( ...
         item, lqiState, qRef-q, antiWindup, runtime.feedbackForceLimit);
 
     dobCompensation = zeros(6, 1);
@@ -147,6 +174,14 @@ if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
         command = min(max(nominal, runtime.model.actuator.forceMin), ...
             runtime.model.actuator.forceMax);
     end
+    qpAwareMismatch = zeros(6, 1);
+    if runtime.useQpAwareAntiWindup && runtime.useStrictQp
+        [nextLqi, nextAntiWindup] = closeLqiAntiWindupWithAppliedForce( ...
+            item, lqiState, qRef-q, rawFeedback, command, feedforward, ...
+            dobCompensation, runtime.qpAwareAntiWindupMismatchLimit, ...
+            runtime.qpAwareAntiWindupGain);
+        qpAwareMismatch = nextAntiWindup;
+    end
     stepTime = toc(timer);
     diagnostic = nan(runtime.diagnosticLayout.width, 1);
     layout = runtime.diagnosticLayout;
@@ -157,6 +192,10 @@ if ~isfinite(lastTime) || abs(currentTime-lastTime) > tolerance
     diagnostic(layout.minimumCbfResidual) = minimumCbf;
     diagnostic(layout.dobWrenchEstimate) = dobEstimate;
     diagnostic(layout.dobLegCompensation) = dobCompensation;
+    diagnostic(layout.qpAwareAntiWindupMismatch) = qpAwareMismatch;
+    diagnostic(layout.governedAttitudePerturbation) = governed.perturbation;
+    diagnostic(layout.governedAttitudeRate) = governed.rate;
+    diagnostic(layout.governedAttitudeAcceleration) = governed.acceleration;
 
     block.Dwork(1).Data = command;
     block.Dwork(2).Data = command;

@@ -12,6 +12,7 @@ reference = nominal;
 time = nominal.time(:).';
 sampleCount = numel(time);
 reference.targetPerturbation = zeros(6, sampleCount);
+reference.commandNoisePerturbation = zeros(6, sampleCount);
 reference.feedforwardPolicy = "nominal";
 
 if experimentCase.hasSmoothBump
@@ -32,6 +33,7 @@ if experimentCase.hasTargetNoise
         config.noiseCutoffHz, experimentCase.noiseSeed, config.noiseWindow);
     reference.targetPerturbation(4:6, :) = ...
         reference.targetPerturbation(4:6, :)+noise;
+    reference.commandNoisePerturbation(4:6, :) = noise;
     reference.q(4:6, :) = reference.q(4:6, :)+noise;
     % Command noise deliberately affects only q.  qd/qdd and feedforward
     % remain those of the smooth or nominal trajectory assembled above.

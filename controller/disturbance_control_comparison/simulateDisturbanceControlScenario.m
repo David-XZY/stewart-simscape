@@ -31,6 +31,10 @@ commandForce = zeros(6, sampleCount);
 appliedForce = zeros(6, sampleCount);
 plantAcceleration = zeros(6, sampleCount);
 estimatedWrench = zeros(6, sampleCount);
+governedReference = zeros(6, sampleCount);
+governedReferenceRate = zeros(6, sampleCount);
+governedReferenceAcceleration = zeros(6, sampleCount);
+qpAwareMismatch = zeros(6, sampleCount);
 actualWrench = evaluatePlatformWrench(time, experimentCase, config);
 controllerStepTime = nan(1, sampleCount);
 qpSolveTime = nan(1, sampleCount);
@@ -41,6 +45,11 @@ minimumCbfResidual = nan(1, sampleCount);
 lqiState = zeros(size(controller.schedule.samples(1).controllerA, 1), 1);
 antiWindup = zeros(6, 1);
 dobState = initializeDisturbanceObserver();
+governorState = initializeAttitudeCommandGovernor();
+governorConfig = makeAttitudeCommandGovernorConfig(config.sampleTime, ...
+    config.commandGovernorCutoffHz, config.commandGovernorDampingRatio, ...
+    config.commandGovernorMaxRateDegPerSec, ...
+    config.commandGovernorMaxAccelerationDegPerSec2);
 previousCommand = reference.computedForce(:, 1);
 observerAppliedForce = previousCommand;
 strict = strictConfig;
@@ -66,10 +75,16 @@ for sampleIndex = 1:sampleCount
     end
 
     timer = tic;
+    [qCommand, qdCommand, qddCommand, feedforward, governorState] = ...
+        makeControlReference(reference, sampleIndex, q, qd, nominalModel, ...
+        poseConfig, controller, governorConfig, governorState);
     scheduleIndex = controller.schedule.referenceIndex(sampleIndex);
     scheduleSample = controller.schedule.samples(scheduleIndex);
-    [lqiState, antiWindup, ~, feedback] = stepDiscreteLqiController( ...
-        scheduleSample, lqiState, reference.q(:, sampleIndex)-q, ...
+    previousLqiState = lqiState;
+    poseError = qCommand-q;
+    [lqiState, antiWindup, rawFeedback, feedback] = ...
+        stepDiscreteLqiController( ...
+        scheduleSample, lqiState, poseError, ...
         antiWindup, poseConfig.lqiFeedbackForceLimit);
     compensation = zeros(6, 1);
     if controller.useDob
@@ -78,13 +93,13 @@ for sampleIndex = 1:sampleCount
             controller.dobConfig, dobState);
         estimatedWrench(:, sampleIndex) = dobDiagnostic.wrenchEstimate;
     end
-    regulatedNominal = reference.computedForce(:, sampleIndex)+feedback;
+    regulatedNominal = feedforward+feedback;
     nominal = regulatedNominal+compensation;
     if controller.useStrictQp
         strict.time = time(sampleIndex);
         [command, qpDiagnostic] = stepStrictClfCbfQp( ...
-            q, qd, reference.q(:, sampleIndex), reference.qd(:, sampleIndex), ...
-            reference.qdd(:, sampleIndex), regulatedNominal, previousCommand, ...
+            q, qd, qCommand, qdCommand, qddCommand, regulatedNominal, ...
+            previousCommand, ...
             nominalModel, controller.filterScene, strict, compensation, ...
             estimatedWrench(:, sampleIndex));
         qpSolveTime(sampleIndex) = qpDiagnostic.solveTime;
@@ -94,6 +109,17 @@ for sampleIndex = 1:sampleCount
     else
         command = min(max(nominal, nominalModel.actuator.forceMin), ...
             nominalModel.actuator.forceMax);
+    end
+    if controllerOption(controller, 'useQpAwareAntiWindup', false) && ...
+            controller.useStrictQp
+        [lqiState, antiWindup] = closeLqiAntiWindupWithAppliedForce( ...
+            scheduleSample, previousLqiState, poseError, rawFeedback, ...
+            command, feedforward, compensation, ...
+            controllerOption(controller, 'qpAwareAntiWindupMismatchLimit', ...
+            config.qpAwareAntiWindupMismatchLimit), ...
+            controllerOption(controller, 'qpAwareAntiWindupGain', ...
+            config.qpAwareAntiWindupGain));
+        qpAwareMismatch(:, sampleIndex) = antiWindup;
     end
     controllerStepTime(sampleIndex) = toc(timer);
 
@@ -112,6 +138,9 @@ for sampleIndex = 1:sampleCount
         break;
     end
     plantAcceleration(:, sampleIndex) = plantAux.qdd;
+    governedReference(:, sampleIndex) = qCommand;
+    governedReferenceRate(:, sampleIndex) = qdCommand;
+    governedReferenceAcceleration(:, sampleIndex) = qddCommand;
     previousCommand = command;
     observerAppliedForce = command;
     denseStart = (sampleIndex-1)*substeps+1;
@@ -150,6 +179,10 @@ appliedForce = appliedForce(:, 1:lastSample);
 plantAcceleration = plantAcceleration(:, 1:lastSample);
 estimatedWrench = estimatedWrench(:, 1:lastSample);
 actualWrench = actualWrench(:, 1:lastSample);
+governedReference = governedReference(:, 1:lastSample);
+governedReferenceRate = governedReferenceRate(:, 1:lastSample);
+governedReferenceAcceleration = governedReferenceAcceleration(:, 1:lastSample);
+qpAwareMismatch = qpAwareMismatch(:, 1:lastSample);
 controllerStepTime = controllerStepTime(1:lastSample);
 qpSolveTime = qpSolveTime(1:lastSample);
 qpFeasible = qpFeasible(1:lastSample);
@@ -164,7 +197,11 @@ control = struct('time', time, 'state', state, ...
     'feedbackForce', feedbackForce, 'dobForce', dobForce, ...
     'nominalForce', nominalForce, 'commandForce', commandForce, ...
     'appliedForce', appliedForce, 'plantAcceleration', plantAcceleration, ...
-    'actualWrench', actualWrench, 'estimatedWrench', estimatedWrench);
+    'actualWrench', actualWrench, 'estimatedWrench', estimatedWrench, ...
+    'governedReference', governedReference, ...
+    'governedReferenceRate', governedReferenceRate, ...
+    'governedReferenceAcceleration', governedReferenceAcceleration, ...
+    'qpAwareAntiWindupMismatch', qpAwareMismatch);
 diagnostics = struct('controllerStepTime', controllerStepTime, ...
     'qpSolveTime', qpSolveTime, 'qpFeasible', qpFeasible, ...
     'qpFallback', qpFallback, 'minimumCbfResidual', minimumCbfResidual);
@@ -184,6 +221,37 @@ run.diagnostics = diagnostics;
 run.dense = dense;
 run.termination = termination;
 run.metrics = calculateMetrics(run, nominalModel, strict, scene, config);
+end
+
+function [qCommand, qdCommand, qddCommand, feedforward, governorState] = ...
+        makeControlReference(reference, sampleIndex, q, qd, model, poseConfig, ...
+        controller, governorConfig, governorState)
+qCommand = reference.q(:, sampleIndex);
+qdCommand = reference.qd(:, sampleIndex);
+qddCommand = reference.qdd(:, sampleIndex);
+feedforward = reference.computedForce(:, sampleIndex);
+if ~controllerOption(controller, 'useCommandGovernor', false)
+    return;
+end
+noise = reference.commandNoisePerturbation(4:6, sampleIndex);
+basePose = qCommand;
+basePose(4:6) = basePose(4:6)-noise;
+[governed, governorState] = stepAttitudeCommandGovernor( ...
+    noise, governorState, governorConfig);
+qCommand = basePose;
+qCommand(4:6) = qCommand(4:6)+governed.perturbation;
+qdCommand(4:6) = qdCommand(4:6)+governed.rate;
+qddCommand(4:6) = qddCommand(4:6)+governed.acceleration;
+feedforward = computeComputedTorqueForce(qCommand, qdCommand, qddCommand, ...
+    q, qd, model, poseConfig);
+end
+
+function value = controllerOption(controller, name, fallback)
+if isfield(controller, name)
+    value = controller.(name);
+else
+    value = fallback;
+end
 end
 
 function [xdot, aux] = dynamicsWithWrench(state, force, wrench, model)
