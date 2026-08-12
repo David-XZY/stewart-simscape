@@ -15,7 +15,9 @@ t0 = config.wrenchWindow(1);
 t1 = config.wrenchWindow(2);
 phase = (time(:).'-t0)/(t1-t0);
 active = phase >= 0 & phase <= 1;
-wrench(:, active) = experimentCase.scale*config.basePlatformWrench(:) .* ...
-    sin(pi*phase(active));
+if any(active)
+    wrench(:, active) = experimentCase.scale*config.basePlatformWrench(:) * ...
+        sin(pi*phase(active));
+end
 if isscalar(time), wrench = wrench(:, 1); end
 end

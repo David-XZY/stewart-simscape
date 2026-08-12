@@ -220,7 +220,14 @@ legSpeed = zeros(6, sampleCount);
 legAcceleration = zeros(6, sampleCount);
 sigmaMin = zeros(1, sampleCount);
 collisionDistance = zeros(3, sampleCount);
-appliedForce = interp1(controlTime(:), commandForce.', time(:), 'previous', 'extrap').';
+if numel(controlTime) == 1
+    appliedForce = repmat(commandForce(:, 1), 1, sampleCount);
+else
+    controlDt = median(diff(controlTime));
+    forceIndex = floor((time-controlTime(1))/controlDt)+1;
+    forceIndex = min(max(forceIndex, 1), numel(controlTime));
+    appliedForce = commandForce(:, forceIndex);
+end
 for index = 1:sampleCount
     wrench = evaluatePlatformWrench(time(index), experimentCase, config);
     [~, aux] = dynamicsWithWrench(state(:, index), appliedForce(:, index), wrench, model);

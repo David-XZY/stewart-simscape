@@ -25,7 +25,9 @@ for controllerIndex = 1:numel(controllers)
         [setup, nominal] = prepareController(trajectoryFile, controller, ...
             strictConfig, config);
         cleanup = onCleanup(@() closeWithoutSaving(setup.modelName));
-        if config.useFastRestart
+        fastRestartActive = config.useFastRestart && ...
+            ~startsWith(controller.id, "scheduled");
+        if fastRestartActive
             set_param(setup.modelName, 'FastRestart', 'on');
         end
     catch exception
@@ -40,6 +42,7 @@ for controllerIndex = 1:numel(controllers)
         end
         continue;
     end
+    scheduleCache = struct();
     for caseIndex = 1:numel(cases)
         experimentCase = cases(caseIndex);
         runIndex = runIndex+1;
@@ -52,9 +55,14 @@ for controllerIndex = 1:numel(controllers)
             if isfield(setup, 'candidateRuntime')
                 runtime = setup.candidateRuntime;
                 if startsWith(controller.id, "scheduled") && experimentCase.hasSmoothBump
-                    runtime.schedule = buildReferenceScheduledLqi(reference, ...
-                        setup.model, setup.config, 'mode', 'scheduled', ...
-                        'stateStep', config.stateStep, 'inputStep', config.inputStep);
+                    key = matlab.lang.makeValidName(char("bump_"+ ...
+                        replace(compose('%.1f', experimentCase.scale), '.', 'p')));
+                    if ~isfield(scheduleCache, key)
+                        scheduleCache.(key) = buildReferenceScheduledLqi(reference, ...
+                            setup.model, setup.config, 'mode', 'scheduled', ...
+                            'stateStep', config.stateStep, 'inputStep', config.inputStep);
+                    end
+                    runtime.schedule = scheduleCache.(key);
                 else
                     runtime.schedule = controller.schedule;
                 end
@@ -77,7 +85,7 @@ for controllerIndex = 1:numel(controllers)
             runsCell{runIndex} = failedRun(controller, experimentCase, exception);
         end
     end
-    if config.useFastRestart && bdIsLoaded(setup.modelName)
+    if fastRestartActive && bdIsLoaded(setup.modelName)
         set_param(setup.modelName, 'FastRestart', 'off');
     end
     clear cleanup;
