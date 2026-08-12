@@ -61,6 +61,13 @@ testFiles = {
     'test_76_lqi_schedule_linearization_contract'
     'test_77_lqi_schedule_controller_contract'
     'test_78_lqi_schedule_runtime_contract'
+    'test_79_disturbance_config_and_case_matrix'
+    'test_80_platform_wrench_waveform'
+    'test_81_target_noise_reproducibility'
+    'test_82_smooth_reference_recomputation'
+    'test_83_dob_sign_and_limits'
+    'test_84_disturbance_schedule_index_contract'
+    'test_85_zero_disturbance_regression'
 };
 
 for index = 1:numel(testFiles)
