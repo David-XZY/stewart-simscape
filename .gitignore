@@ -32,6 +32,9 @@ codegen/
 # Simulink cache files
 *.slxc
 
+# Simscape/visualization diagnostic timing logs generated at repository root
+V3D*_BIN.txt
+
 # Octave session info
 octave-workspace
 
