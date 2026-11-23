@@ -1,0 +1,245 @@
+{
+  "experimentVersion": "payload_generalization_v1",
+  "status": "approved_freeze_before_training",
+  "taskSeed": 20260919,
+  "contextSchema": "pg_basic99_v1",
+  "signatureSchema": "pg_signature354_v1",
+  "geometryVersion": "pg_convex_support_v1",
+  "physicsVersion": "pg_uniform_rigid_v1",
+  "shapes": [
+    "cylinder",
+    "box"
+  ],
+  "parameterDomain": {
+    "mass": [
+      50,
+      400
+    ],
+    "cylinderLength": [
+      0.8,
+      1.3
+    ],
+    "radius": [
+      0.1,
+      0.15
+    ],
+    "boxLength": [
+      0.8,
+      1.3
+    ],
+    "boxWidth": [
+      0.2,
+      0.3
+    ],
+    "boxHeight": [
+      0.16,
+      0.28
+    ]
+  },
+  "representation": {
+    "degree": 5,
+    "controls": 16,
+    "fixedAtEachEnd": 3,
+    "outputDimensions": 60
+  },
+  "physicalLimits": {
+    "clearance": 0.01,
+    "legLength": [
+      1.05,
+      2
+    ],
+    "legSpeed": 0.6,
+    "legAcceleration": 1.2,
+    "force": [
+      -2000,
+      2000
+    ],
+    "sigmaMin": 0.1,
+    "conditionMax": 20
+  },
+  "acceptance": {
+    "gridSeconds": 0.005,
+    "nearGridSeconds": 0.001,
+    "fineAuditSeconds": 0.0025,
+    "solverSuccessRequired": false,
+    "optimizationResidualGate": false,
+    "finalAuditRequired": true,
+    "boundaryTolerance": 1e-06
+  },
+  "geometryEnvelope": {
+    "scope": "declared_idealized_not_CAD_verified",
+    "platformRadius": 0.55,
+    "platformHalfHeight": 0.05,
+    "baseRadius": 0.8,
+    "baseHalfHeight": 0.1,
+    "baseCenter": [
+      0,
+      0,
+      -0.1
+    ],
+    "legRadius": 0.06
+  },
+  "methods": [
+    "ddpm_basic",
+    "ddpm_signature",
+    "regression",
+    "regression_signature",
+    "retrieval_signature",
+    "ihsid"
+  ],
+  "reference": {
+    "intervals": 60,
+    "starts": [
+      "baseline"
+    ],
+    "maxIterationsPerBlock": 2000,
+    "solverTolerance": 1e-09,
+    "objective": "unchanged"
+  },
+  "training": {
+    "seeds": [
+      20260919,
+      20260920,
+      20260921
+    ],
+    "width": 256,
+    "hiddenLayers": 3,
+    "activation": "tanh",
+    "optimizer": "AdamW",
+    "learningRate": 0.001,
+    "batch": 64,
+    "epochsMax": 300,
+    "wallHours": 6,
+    "validationEvery": 10,
+    "validationConditions": 194,
+    "minDevelopmentTrainConditions": 50,
+    "minDevelopmentValidationConditions": 20,
+    "stepsPerEpochFloor": 64,
+    "checkpointEvery": 10,
+    "earlyStopping": false,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "weightDecay": 0.01,
+    "gradClip": 10,
+    "validationSeeds": [
+      20261001,
+      20261002,
+      20261003
+    ]
+  },
+  "diffusion": {
+    "steps": 100,
+    "schedule": "cosine",
+    "offset": 0.008,
+    "betaMax": 0.999
+  },
+  "physicsLoss": {
+    "enabled": false,
+    "weight": 0,
+    "device": "cpu"
+  },
+  "guidance": {
+    "enabled": false
+  },
+  "onlineBudgets": [
+    2,
+    5,
+    10
+  ],
+  "primaryBudget": 2,
+  "candidateSchedule": "sequential_until_deadline_or_finite_library_exhaustion",
+  "stageFractions": [
+    0.5,
+    0.4,
+    0.1
+  ],
+  "repair": {
+    "iterationsPerBlock": 40,
+    "step": 0.03,
+    "backtracks": 4,
+    "positionScale": 0.1,
+    "rotationScale": 0.2,
+    "fallback": false,
+    "candidatesMax": null
+  },
+  "retiming": {
+    "controls": 12,
+    "iterationsMax": 40,
+    "offlineControls": [
+      12,
+      16,
+      24
+    ]
+  },
+  "qualityCaps": null,
+  "cachePolicy": "task_independent_warm_task_related_reset",
+  "threadConfig": {
+    "planningWorkers": 1,
+    "cpuThreads": 1,
+    "onlineDevice": "cpu",
+    "trainingDevice": "cuda"
+  },
+  "statistics": {
+    "cluster": "baseSceneId",
+    "seedBlock": "shared_across_scenes",
+    "bootstrapReplicates": 2000,
+    "primaryComparison": "all_six_methods_at_2_5_10_and_empirical_plateau",
+    "testSetUsed": false
+  },
+  "stageGates": {
+    "physicalChecks": "required",
+    "resumeTests": "required",
+    "missingLabels": "no_training",
+    "missingFreezeHashes": "no_benchmark"
+  },
+  "sampling": {
+    "cleanProjection": "train_standardized_envelope",
+    "radiusRule": "max(1,1.5*max_abs_standardized_training_label) per output coordinate",
+    "physicalAcceptanceUnchanged": true
+  },
+  "experimentRevision": "payload_retrain474_v1",
+  "comparison": {
+    "methods": [
+      "ddpm_basic",
+      "ddpm_signature",
+      "regression",
+      "regression_signature",
+      "retrieval_signature",
+      "ihsid"
+    ],
+    "budgets": [
+      2,
+      5,
+      10
+    ],
+    "stageFractions": [
+      0.5,
+      0.4,
+      0.1
+    ],
+    "fallback": false,
+    "plateauStart": 20,
+    "plateauMinimum": 160,
+    "plateauNoGainDoublings": 3
+  },
+  "validation": {
+    "legacyTasks": 120,
+    "legacyEndpointValid": 74,
+    "newTasks": 120,
+    "newBaseScenes": 24,
+    "panelWeights": {
+      "legacy": 0.5,
+      "longtime": 0.5
+    },
+    "newDurations": [
+      5,
+      7.5,
+      10,
+      12.5,
+      15
+    ]
+  }
+}

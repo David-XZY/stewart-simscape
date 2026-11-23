@@ -1,0 +1,16 @@
+MATLAB package validation
+matlabVersion: 25.2.0.2998904 (R2025b)
+representativeMatReadable: 1
+representativeResultPassed: 1
+originalRows: 1348
+compactCsvRows: 1000
+compactCsvColumns: 19
+trajectoryMatReadable: 1
+trajectoryRefsPresent: 1
+experimentSummaryRows: 2
+experimentObservedPassedAllZero: 1
+pngFilesReadable: 6
+mFilesChecked: 134
+checkcodeMessageCount: 31
+mainModelLoadPassed: 1
+modelClosedWithoutSaving: 1

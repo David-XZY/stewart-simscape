@@ -1,0 +1,8 @@
+首轮不启动实验。原签名回归1秒、5秒为空缺，共需876次真实调用。
+补测输出独立目录，calls.jsonl.gz仅含146任务×3原区组×2预算。
+补测前核对原数值代码、模型、数据、硬件、运行库、线程、缓存规则；不匹配则不能拼接，改为受影响预算五方法同批重跑。
+仅在核验通过后写compatibility.json：codeHash、libraryHash取本包analysis_config.json；originalHardwareRuntimeThreadCacheIdentityVerified=true必须有实际核对证据。
+执行：python plot_endpoint_five_methods.py --source <原报告data目录> --supplement <补测目录> --output <全新v2目录>
+再执行：python deliver_endpoint_five_methods.py --output <全新v2目录>
+原v1目录与图表保留。该接口只接收补测，不执行规划器；不要把真实失败填成未测。
+全五方法重跑时，应从新批次重新建立统一来源，不把该补测入口用于混合不兼容运行。

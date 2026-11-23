@@ -1,0 +1,43 @@
+SOURCE STATE
+sourceRoot: D:\NPU\Matlab_code\stewart-simscape
+baseCommit: ae06b7508151aea2c704d4b1a204bd9fb45e3347
+headCommit: ae06b7508151aea2c704d4b1a204bd9fb45e3347
+branch: David_main
+capturedAt: 2026-09-04 09:34:52 +08:00
+
+git status --short --branch:
+## David_main...origin/David_main
+ M controller/runs/run_13_strict_clf_cbf_qp_simscape.m
+ M controller/simscape_tracking/computeComputedTorqueForce.m
+ M controller/simscape_tracking/evaluateSimscapeStrictClfCbfQp.m
+ M controller/simscape_tracking/installSimscapeStrictClfCbfQpRuntime.m
+ M controller/simscape_tracking/makeSimscapePoseForceConfig.m
+ M controller/simscape_tracking/prepareSimscapeStrictClfCbfQp.m
+ M controller/simscape_tracking/strictClfCbfQpSimscapeSfun.m
+ M controller/tests/run_all_active_tests.m
+ M controller/tests/test_03_directory_contract.m
+?? controller/runs/run_15_observed_state_control_ablation.m
+?? controller/simscape_tracking/computePoseInnovation.m
+?? controller/simscape_tracking/currentStateComputedTorqueSimscapeSfun.m
+?? controller/simscape_tracking/currentStateObserverSimscapeSfun.m
+?? controller/simscape_tracking/designCurrentStateLuenbergerObserver.m
+?? controller/simscape_tracking/measuredStateAdapterSimscapeSfun.m
+?? controller/simscape_tracking/stepCurrentStateLuenbergerObserver.m
+?? controller/tests/test_79_current_state_computed_torque_contract.m
+?? controller/tests/test_80_current_state_observer_contract.m
+?? controller/tests/test_81_observed_state_runtime_routing.m
+?? controller/tests/test_82_observed_state_simscape_smoke.m
+
+git diff --stat:
+ .../runs/run_13_strict_clf_cbf_qp_simscape.m       |  52 +++++-
+ .../simscape_tracking/computeComputedTorqueForce.m |  17 +-
+ .../evaluateSimscapeStrictClfCbfQp.m               |  87 ++++++++-
+ .../installSimscapeStrictClfCbfQpRuntime.m         | 208 +++++++++++++++++++--
+ .../makeSimscapePoseForceConfig.m                  |   4 +
+ .../prepareSimscapeStrictClfCbfQp.m                |  22 +++
+ .../simscape_tracking/strictClfCbfQpSimscapeSfun.m |  38 ++--
+ controller/tests/run_all_active_tests.m            |   4 +
+ controller/tests/test_03_directory_contract.m      |   3 +-
+ 9 files changed, 392 insertions(+), 43 deletions(-)
+
+Boundary: current observer/current-state code is an uncommitted experimental snapshot.

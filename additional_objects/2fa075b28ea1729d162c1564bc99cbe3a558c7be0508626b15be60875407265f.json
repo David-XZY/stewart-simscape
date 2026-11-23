@@ -1,0 +1,60 @@
+{
+  "version": "payload_endpoint_pass_figures_v1_20260927",
+  "methods": [
+    "ddpm_basic",
+    "regression",
+    "ddpm_signature",
+    "regression_signature",
+    "ihsid"
+  ],
+  "labels": {
+    "ddpm_basic": "基础扩散",
+    "regression": "普通回归",
+    "ddpm_signature": "物理签名扩散",
+    "regression_signature": "物理签名回归",
+    "ihsid": "IHSID"
+  },
+  "colors": {
+    "ddpm_basic": "#2876b9",
+    "regression": "#df8428",
+    "ddpm_signature": "#138774",
+    "regression_signature": "#a75c9f",
+    "ihsid": "#55626c"
+  },
+  "budgets": [
+    1,
+    2,
+    5,
+    10
+  ],
+  "successField": "finalQualified",
+  "bootstrapReplicates": 2000,
+  "bootstrapSeed": 20260927,
+  "cluster": "baseSceneId",
+  "seedBlock": "shared_across_scenes",
+  "weighting": "ratio_of_resampled_sums_task_equal",
+  "independentTasks": 146,
+  "sceneClusters": 20,
+  "excludedTasks": 46,
+  "futureSupplementCalls": 876,
+  "missingCells": [
+    {
+      "method": "regression_signature",
+      "B": 1
+    },
+    {
+      "method": "regression_signature",
+      "B": 5
+    }
+  ],
+  "sourceIdentity": {
+    "codeHash": "65b808d13012949e1fd67f0344ed18e73206cccf2c3642d239eb28bc2f8fd24d",
+    "libraryHash": "d17dd4a1feb1aec41fa3440582f7f061e1875d3b5ab2809128cdfe45ec96c0b5"
+  },
+  "sourceSha256": {
+    "main_all_calls.jsonl.gz": "5f8729cc3e75f4bae523a42ee2d23735b41419cad2ac0355c63014b4d9f99732",
+    "controls_all_calls.jsonl.gz": "65cc300cb6507fbaf85574ecd8c44103bdff610af41f97755b1380234ab6241a",
+    "tasks_192.json": "e8fb4859faae124f4b75dcb774245aeef50672311e6fa7f222363dcece7bcdbb"
+  },
+  "experimentsLaunched": false
+}

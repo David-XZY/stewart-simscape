@@ -1,0 +1,23 @@
+function dataset=buildResidualWrenchTarget(session,model)
+required={'t','q','qd','qdd','actualForce','forceTime','taskId','loadId','trajectoryId','forceSource'};
+for k=1:numel(required), assert(isfield(session,required{k}),'ABFD:DatasetField','Missing %s.',required{k}); end
+assert(strcmp(session.forceSource,'measured-actuator-output'), ...
+    'ABFD:ActualForceRequired','Residual labels require measured actual actuator force, not commands.');
+t=session.t(:); ft=session.forceTime(:);
+assert(isequal(size(session.q),[6,numel(t)]) && isequal(size(session.qd),size(session.q)) && ...
+    isequal(size(session.qdd),size(session.q)) && isequal(size(session.actualForce),[6,numel(ft)]), ...
+    'ABFD:DatasetShape','State and force sample dimensions do not match their timestamps.');
+assert(all(diff(t)>0) && all(diff(ft)>0) && t(1)>=ft(1) && t(end)<=ft(end), ...
+    'ABFD:ForceAlignment','Force samples must cover the state time range without extrapolation.');
+F=interp1(ft,session.actualForce.',t,'linear').';
+assert(isequal(size(F),size(session.q)) && all(isfinite([F(:);session.q(:);session.qd(:);session.qdd(:)])), ...
+    'ABFD:DatasetShape','Nonfinite or mismatched signals.');
+r=zeros(size(F)); W=r;
+for k=1:numel(t)
+    J=sgpJacobian(session.q(:,k),model); W(:,k)=J.Jv.'*F(:,k);
+    r(:,k)=W(:,k)-computeCompositeRequiredWrench(session.q(:,k),session.qd(:,k),session.qdd(:,k),model);
+end
+dataset=struct('schemaVersion',1,'x',[session.q;session.qd].','acceleration',session.qdd.', ...
+    'residual',r.','wrench',W.','t',t,'taskId',session.taskId,'loadId',session.loadId, ...
+    'trajectoryId',session.trajectoryId,'forceSource',session.forceSource,'modelHash',abfdHash(model));
+end

@@ -1,0 +1,22 @@
+{
+  "revision": "force-v57-development",
+  "parameterization": "v_force_residual",
+  "horizon": 60,
+  "control_seconds": 0.02,
+  "refresh_seconds": 0.1,
+  "hidden": [256, 256, 256],
+  "diffusion_steps": 100,
+  "ddim_steps": 20,
+  "candidates": 4,
+  "seeds": [5101, 5102, 5103, 5104, 5105],
+  "learning_rate": 0.001,
+  "batch_size": 256,
+  "epochs": 300,
+  "force_loss_weight": 0.1,
+  "increment_loss_weight": 0.02,
+  "physical_loss_weight": 0.02,
+  "physical_alpha_threshold": 0.8,
+  "physical_force_scale_N": 20.0,
+  "terminal_region_certified": false,
+  "formal_ready": false
+}

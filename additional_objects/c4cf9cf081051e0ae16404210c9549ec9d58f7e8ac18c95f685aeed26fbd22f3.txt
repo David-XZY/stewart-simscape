@@ -1,0 +1,44 @@
+Simscape force-input pose tracking summary
+resultFile: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_simscape_pose_force_control_20260614_174539.mat
+trajectoryFile: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\examples\ihsid_40x20_limited_memory\simscape_references.mat
+baselineFile: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_simscape_length_cascade_20260613_134501.mat
+bandwidthHz: 15
+gainScale: 0.45
+rotationGainScale: 1.4
+gravityEnabled: 1
+overallPassed: 1
+simulationCompleted: true
+finitePassed: true
+linearDesignPassed: true
+lengthPassed: true
+forcePassed: true
+speedPassed: true
+accelerationPassed: true
+trackingPassed: true
+lengthRms: [5.82083540949e-06 3.73611707417e-06 5.66401835961e-06 8.3470425567e-06 7.42660816923e-06 7.41071027517e-06]
+lengthPeak: [2.91815535455e-05 2.33813479372e-05 3.61545356348e-05 4.8583083269e-05 4.64187178965e-05 3.96503852927e-05]
+poseRms: [3.97424034784e-06 4.46010566934e-06 3.98591064184e-06 1.19009479087e-05 7.45707296255e-06 1.05494097851e-05]
+posePeak: [2.22254929082e-05 2.3720255744e-05 2.747152641e-05 6.95617286165e-05 3.5674166237e-05 6.36188017804e-05]
+equivalentPoseRms: 4.63154489787e-06
+equivalentPosePeak: 3.47808643082e-05
+maxLengthTrackingPeak: 4.8583083269e-05
+maxTranslationPeak: 2.747152641e-05
+maxRotationPeak: 6.95617286165e-05
+maxAbsControlForce: 1097.49479818
+maxAbsFeedbackForce: 7.64075936499
+maxAbsFeedforwardForce: 1092.73413064
+minAbsoluteLength: 1.07841594348
+maxAbsoluteLength: 1.90582369937
+maxAbsLegSpeed: 0.278558040813
+maxAbsLegAcceleration: 0.167984404608
+characteristicLength: 0.5
+candidateEquivalentPoseRms: 4.63154489787e-06
+baselineEquivalentPoseRms: 0.000382994925744
+candidateEquivalentPosePeak: 3.47808643082e-05
+baselineEquivalentPosePeak: 0.00105332673888
+rmsRatio: 0.0120929667381
+peakRatio: 0.0330200146111
+score: 0.0225564906746
+translationPeakRatio: 0.0283600112538
+rotationPeakRatio: 0.0330200146111
+passed: true

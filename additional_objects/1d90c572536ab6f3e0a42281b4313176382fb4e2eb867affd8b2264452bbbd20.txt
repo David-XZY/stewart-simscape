@@ -1,0 +1,34 @@
+Simscape pure length cascade control summary
+resultFile: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\results\result_simscape_length_cascade_20260613_134501.mat
+trajectoryFile: D:\NPU\Matlab_code\stewart-simscape\opt_minimal\examples\ihsid_40x20_limited_memory\simscape_references.mat
+sampleTime: 0.01
+innerBandwidthHz: 10
+outerBandwidthHz: 2
+positionGainScale: 1
+velocityGainScale: 0.7
+gravityEnabled: 0
+passed: 1
+simulationCompleted: true
+finitePassed: true
+linearDesignPassed: true
+lengthPassed: true
+speedPassed: true
+accelerationPassed: true
+lengthTrackingPassed: true
+translationTrackingPassed: true
+rotationTrackingPassed: true
+trackingPassed: true
+lengthRms: [0.00019967172997 0.000486984570604 0.000490065250178 0.00100411397846 0.000561278267087 0.00039933234785]
+lengthPeak: [0.000322036328093 0.000844775165694 0.000890983750661 0.00176271624276 0.00100925931379 0.000637945377615]
+endpointLengthError: [0.000244531604317 0.000142546715436 0.000200547503637 0.000154888704086 0.000355048483966 0.000459600050565]
+maxEndpointLengthError: 0.000459600050565
+poseRms: [0.000225877972161 0.000568280967181 0.000357508752483 3.91161204521e-05 0.000404006122704 0.00116128601178]
+posePeak: [0.000458068200501 0.00096867120976 0.000503479605139 0.000114459505427 0.000706232374902 0.00210665347777]
+maxLengthTrackingPeak: 0.00176271624276
+maxTranslationPeak: 0.00096867120976
+maxRotationPeak: 0.00210665347777
+velocityErrorRms: [0.000878989658795 0.00164246145449 0.00178373069558 0.00334510307422 0.00218024363775 0.00175592463999]
+velocityErrorPeak: [0.00301311502131 0.0032310188943 0.00315174810859 0.00569975675622 0.00493664225145 0.00565131064734]
+maxAbsLegSpeed: 0.25695403319
+maxAbsLegAcceleration: 0.153818315222
+commandSaturationRatio: 0

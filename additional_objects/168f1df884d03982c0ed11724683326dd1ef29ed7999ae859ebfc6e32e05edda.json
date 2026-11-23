@@ -1,0 +1,128 @@
+{
+  "mainProtocol": {
+    "runName": "frozen_v1",
+    "implementationHash": "cf5eedc27bb89b1bd01c8cfc11be340454a1fb600eec7979364d969b585c5f72",
+    "manifestHash": "143398c83a98005d7bb9d6eac795f5055501b0bd2bd2ce76338d1e18b7dea611",
+    "modelHash": "bbb83f56a629e611eb5b94340fd5f37a5c4aa13b9935962c2e8067e2381fb627",
+    "fastBudget": 30,
+    "solverBudget": 180,
+    "referenceBudget": 600,
+    "qualityStep": 0.005,
+    "repairBudget": 2,
+    "repairIterations": 20,
+    "knownCases": 172,
+    "unknownCases": 116,
+    "coreCases": 32,
+    "matlab": "9.6.0.1072779 (R2019a)",
+    "candidateNoise": "Independent candidate-ID streams; exact prefixes across K",
+    "timing": "Task-independent runtime/model loading reported as startup; all task-dependent sampling, building, ranking, required validation, repair and solving counted."
+  },
+  "sourceHashes": {
+    "run_reference.py": "34b61f10d0cc3e4c1645150835e5cad191006313884db3707bb27d2fa446456c",
+    "launch_reference.py": "b03734a6621d6b795ad53992c8310c19815ec112465d4f0b90e2f65addf2ac31",
+    "sgPlanCheckpointed.m": "8c9fa6bb4e24b95c3f020342723da91d411c5f52d1a8d856a367f2e2c04e534d",
+    "sgReferenceExport.m": "36e9a344c8318d5bb49893a7594dd87d85c4fb32245a114dfde9d16409959579",
+    "sgReferenceRun.m": "de23e72459bd036970adb545ff237edf9847e0c4c1d0ddb2a16264df395ad71d",
+    "test_sg_checkpoint.m": "ce44dac054c74d8f37e423faaa8a828d3f9b3e078bdf2fe35e230cc3130098c1"
+  },
+  "jobs": [
+    {
+      "jobId": "goal_hood_attitude_1_1__geo_reference__k08__r1",
+      "caseId": "goal_hood_attitude_1_1",
+      "caseIndex": 25,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026193712.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "layout_simple_1__geo_reference__k08__r1",
+      "caseId": "layout_simple_1",
+      "caseIndex": 17,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026194702.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "id_simple_01__geo_reference__k08__r1",
+      "caseId": "id_simple_01",
+      "caseIndex": 1,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026191702.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "goal_simple_position_1_1__geo_reference__k08__r1",
+      "caseId": "goal_simple_position_1_1",
+      "caseIndex": 9,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026192612.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "goal_simple_attitude_1_1__geo_reference__k08__r1",
+      "caseId": "goal_simple_attitude_1_1",
+      "caseIndex": 13,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026192712.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "layout_hood_1__geo_reference__k08__r1",
+      "caseId": "layout_hood_1",
+      "caseIndex": 29,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026194802.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "id_hood_01__geo_reference__k08__r1",
+      "caseId": "id_hood_01",
+      "caseIndex": 5,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026191802.0,
+      "budget": 600,
+      "purpose": "reference"
+    },
+    {
+      "jobId": "goal_hood_position_1_1__geo_reference__k08__r1",
+      "caseId": "goal_hood_position_1_1",
+      "caseIndex": 21,
+      "probe": false,
+      "method": "geo_reference",
+      "count": 8,
+      "repeat": 1,
+      "seed": 2026193612.0,
+      "budget": 600,
+      "purpose": "reference"
+    }
+  ],
+  "computeDeadlineUtc": "2026-09-17T03:46:51+00:00",
+  "note": "Same frozen eight cases and 600s budgets, checkpoint-only revision; do not pool with original reference runs."
+}

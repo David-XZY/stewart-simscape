@@ -1,0 +1,7 @@
+主工程快照
+
+来源工作区：D:\NPU\Matlab_code\stewart-simscape
+Git 提交：ae06b7508151aea2c704d4b1a204bd9fb45e3347
+分支：David_main
+导出原则：仅导出该提交受版本控制的文件；未包含 .git、.SimulinkCache、.SimulinkCode、slprj 和 *.slxc 等可再生项。
+文件数：4677

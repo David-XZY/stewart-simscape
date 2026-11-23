@@ -1,0 +1,9 @@
+function bundle=buildAbfdReferenceBundle(traj,model,scene,disc,provider,config)
+refs=reconstructIhsidContinuousReference(traj,provider,config.sampleTime);
+report=validateAbfdReference(refs,model,scene,config);
+assert(report.passed,'ABFD:ReferenceRejected', ...
+    'Dense execution reference rejected: violation=%g, insertion=%g, dynamics=%g, boundary=%g.', ...
+    report.maxViolation,report.maxInsertionError,report.maxDynamicsResidual,report.maxBoundaryError);
+bundle=struct('schemaVersion',1,'refs',refs,'model',model,'scene',scene,'disc',disc, ...
+    'providerHash',provider.hash,'report',report,'publishPassed',true);
+end

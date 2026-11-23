@@ -1,0 +1,13 @@
+function interface=installAbfdAccelerationProbe(modelName)
+% Reuse the existing direct sensor/bus interface and add a continuous probe log.
+signalPath=installAbfdDirectAcceleration(modelName);
+parent=[modelName,'/Relative Motion Sensor']; sink=[parent,'/Abfd Acceleration Probe Log'];
+add_block('simulink/Sinks/To Workspace',sink,'VariableName','abfdSpatialAcceleration', ...
+    'SaveFormat','Timeseries','MaxDataPoints','inf','Position',[1450,620,1620,675]);
+add_line(parent,'Abfd Spatial Acceleration/1','Abfd Acceleration Probe Log/1','autorouting','on');
+set_param(modelName,'SimulationCommand','update');
+interface=struct('modelSaved',false,'source','independent Simscape Transform Sensor', ...
+    'measurementFrame','Base','signal','abfdSpatialAcceleration','signalPath',signalPath, ...
+    'order','world linear acceleration; world angular acceleration','units',{{'m/s^2','rad/s^2'}}, ...
+    'controllerPortsUnchanged',true);
+end

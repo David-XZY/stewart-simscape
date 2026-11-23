@@ -1,0 +1,4 @@
+function ch5SpeedTailStudy()
+clear ch5SpeedTailClosedLoop ch5SpeedTailDispatch ch5SpeedTailSfun ch5SpeedDispatch
+ch5SpeedTailClosedLoop;
+end

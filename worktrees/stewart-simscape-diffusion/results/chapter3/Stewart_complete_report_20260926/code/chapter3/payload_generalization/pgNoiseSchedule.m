@@ -1,0 +1,9 @@
+function s=pgNoiseSchedule(n)
+if nargin<1, n=100; end
+t=(0:n)/n; f=cos((t+.008)/1.008*pi/2).^2;
+b=min(1-f(2:end)./f(1:end-1),.999); a=1-b; ab=cumprod(a); prev=[1,ab(1:end-1)];
+s=struct('name','cosine_s008_cap999','steps',n,'beta',b,'alpha',a,'alphaBar',ab, ...
+    'posteriorVariance',b.*(1-prev)./(1-ab), ...
+    'posteriorMeanClean',b.*sqrt(prev)./(1-ab), ...
+    'posteriorMeanNoisy',(1-prev).*sqrt(a)./(1-ab));
+end

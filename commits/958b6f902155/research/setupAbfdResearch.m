@@ -1,0 +1,16 @@
+function root = setupAbfdResearch()
+% Explicit, workspace-local paths; never add archived code or another checkout.
+root = fileparts(fileparts(mfilename('fullpath')));
+folders = {'opt_minimal/core','opt_minimal/ihsid','opt_minimal/validation', ...
+    'controller/simscape_tracking','controller/lqi_schedule_comparison', ...
+    'controller/strict_clf_cbf_qp','controller/disturbance_control_comparison','src','research/common','research/a_codesign', ...
+    'research/b_residual_model','research/d_geometric_control', ...
+    'research/f_trajectory_proposal','research/integration','research/tests','research/remote'};
+for k=1:numel(folders), addpath(fullfile(root,folders{k}),'-begin'); end
+addpath(fullfile(root,'lib','casadi-windows-matlabR2018b-v3.7.2'),'-begin');
+% Simscape compilation artifacts must not be shared by concurrent MATLABs.
+cache = fullfile(root,'results','abfd','cache',sprintf('matlab_%d',feature('getpid')));
+if ~isfolder(cache), mkdir(cache); end
+Simulink.fileGenControl('set','CacheFolder',cache, ...
+    'CodeGenFolder',fullfile(cache,'codegen'),'createDir',true);
+end
